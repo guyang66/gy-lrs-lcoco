@@ -1,0 +1,43 @@
+const errorCode = {
+
+  DEFAULT_ERROR: {
+    code: -1,
+    feedback: '系统错误',
+    description: '系统有误，请稍候再试'
+  },
+
+  SYSTEM_ERROR: {
+    code: -1,
+    feedback: '系统错误',
+    description: '系统有误，请稍候再试'
+  },
+
+  NORMAL_ERROR: {
+    code: -2,
+    description: ''
+  },
+
+  NOT_LOGIN: {
+    code: -3,
+    feedback: '无权访问（用户未登录）！',
+    description: '无权访问（用户未登录）！',
+  },
+
+  // *** others ***
+
+  SERVICE_ERROR: {
+    code: 7999,
+    feedback: '服务异常',
+    description: '数据库服务异常'
+  },
+
+  QUERY_DATA_ERROR: {
+    code: 1002,
+    feedback: '服务异常（查询失败）',
+    description: '服务异常（查询失败）'
+  }
+
+
+}
+module.exports = errorCode
+

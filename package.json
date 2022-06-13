@@ -1,0 +1,74 @@
+{
+  "name": "gy-lsp-lcoco",
+  "version": "1.0.0",
+  "description": "简易版狼人杀",
+  "private": true,
+  "author": "goyoung",
+  "remark": "",
+  "scripts": {
+    "kill": "kill `lsof -t -i:6001`",
+    "clear": "rimraf ./logs/*",
+    "start": "cross-env NODE_ENV=development node app.js",
+    "prd": "cross-env NODE_ENV=production pm2 start app.js -n server-lsp",
+    "front": "react-app-rewired start",
+    "dev": "npm run start & npm run front",
+    "build": "rimraf ./dist & react-app-rewired build"
+  },
+  "dependencies": {
+    "axios": "^0.26.0",
+    "chalk": "^4.1.2",
+    "cross-env": "^7.0.3",
+    "koa": "^2.7.0",
+    "koa-body": "^4.1.1",
+    "koa-favicon": "^2.1.0",
+    "koa-json": "^2.0.2",
+    "koa-log4": "^2.3.2",
+    "koa-logger": "^3.2.0",
+    "koa-onerror": "^4.1.0",
+    "koa-router": "^7.4.0",
+    "koa-session": "^6.2.0",
+    "koa-static": "^5.0.0",
+    "koa-views": "^6.2.0",
+    "koa2-cors": "^2.0.6",
+    "log4js": "^6.3.0",
+    "mongoose": "^5.7.5",
+    "node-cache": "^5.1.2",
+    "node-schedule": "^2.1.0",
+    "less": "^3.11.1",
+    "less-loader": "^5.0.0",
+    "nodemailer": "^6.5.0",
+    "urlparse": "0.0.1",
+    "jsonwebtoken": "^8.5.1",
+    "react-app-rewire-hot-loader": "^2.0.1",
+    "react-app-rewired": "^2.1.5",
+    "js-cookie": "^3.0.1",
+    "react-document-title": "^2.0.3",
+    "react-dom": "^17.0.2",
+    "react-hot-loader": "^4.12.21",
+    "customize-cra": "^0.9.1",
+    "react-router-dom": "^5.2.0",
+    "antd": "4.16.0",
+    "babel-plugin-import": "^1.13.0",
+    "classnames": "^2.3.1",
+    "stylus": "^0.54.7",
+    "lodash": "^4.17.15",
+    "stylus-loader": "^3.0.2",
+    "react-scripts": "4.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.1",
+    "rimraf": "^3.0.2"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
