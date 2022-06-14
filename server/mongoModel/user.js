@@ -6,7 +6,6 @@ module.exports = app => {
       username: { type: String, unique: true, required: [true,'username不能为空'] },
       password: { type: String, required: [true,'password不能为空'] },
       name: { type: String, default: '' }, // 昵称
-      department: { type: String }, // 部门
       roles: { type: Array },
       defaultRoleName: { type: String }, // 冗余一个rolename 字段
       defaultRole: { type: String },

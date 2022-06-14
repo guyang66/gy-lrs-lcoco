@@ -10,6 +10,7 @@ const {
   initConfig,
   initController,
   initRouter,
+  initWs,
   initService,
   initLog4,
   initExtend,
@@ -80,7 +81,9 @@ class Application {
     // 初始化路router
     this.$router = initRouter(this);
 
-    // 初始化oss clinet
+    // 初始化websocket
+
+    this.$ws = initWs(this)
 
     // 将ctx注入到app上
     this.$app.use(async (ctx, next) => {

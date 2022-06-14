@@ -14,4 +14,10 @@ code {
 
 #root {
   height: 100%;
+  width: 100%;
+  position: relative;
+  flex-direction: column;
+  display: flex;
+  align-items: center;
+  background: #eeeeee;
 }

@@ -1,13 +1,20 @@
 import Welcome from "@pages/views/welcome";
+import Room from "@pages/views/room";
 
-// 公共路由要喝菜单匹配上
 const publicRoutes = [
   {
-    path: '/admin/index',
+    path: '/index',
     name: '首页',
     key: 'index',
     exact: true,
     component: Welcome,
+  },
+  {
+    path: '/room',
+    name: '房间',
+    key: 'room',
+    exact: true,
+    component: Room,
   },
 ];
 

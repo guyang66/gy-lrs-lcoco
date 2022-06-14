@@ -11,9 +11,9 @@ module.exports = app => {
       remark: { type: String },
     }), {
       timestamps: { createdAt: 'createTime', updatedAt: 'modifyTime'},
-      collection: "lcoco_component_permission",
+      collection: "lcoco_ui_permission",
     }
   )
-  return mongoose.model('lcoco_component_permission', Permission);
+  return mongoose.model('lcoco_ui_permission', Permission);
 }
 

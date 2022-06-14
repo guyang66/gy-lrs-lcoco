@@ -25,8 +25,6 @@ const Login = (props) => {
     }).then(data=>{
       message.success('登录成功！')
       handleUserInfo(data)
-    }).catch(error=>{
-      message.error(`登录失败：${error.message}`)
     })
   };
 
@@ -36,7 +34,7 @@ const Login = (props) => {
 
   // 如果已经登录，直接跳转到首页
   if (token) {
-    return <Redirect to="/admin/" />;
+    return <Redirect to="/" />;
   }
 
   return (

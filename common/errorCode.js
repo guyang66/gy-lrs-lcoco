@@ -35,8 +35,12 @@ const errorCode = {
     code: 1002,
     feedback: '服务异常（查询失败）',
     description: '服务异常（查询失败）'
-  }
-
+  },
+  USER_NOT_EXIST_ERROR: {
+    code: 4002,
+    message: '用户不存在或者已被禁用',
+    description: '用户不存在或者已被禁用，请联系管理员！'
+  },
 
 }
 module.exports = errorCode

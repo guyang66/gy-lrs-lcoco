@@ -1,26 +1,20 @@
 module.exports = app => {
   const {router, $controller, $middleware} = app;
-  router.get('/base', $controller.baseController.find)
-  router.get('/test', $controller.commonController.test)
-
-
-  // 后台配置接口
-  router.get('/api/route/auth',$middleware.auth, $controller.adminConfigController.getRoute)
-  router.get('/api/menus/auth',$middleware.auth, $controller.adminConfigController.getMenus)
-  router.get('/api/permission/ui/auth',$middleware.auth, $controller.adminConfigController.getUiPermission)
-  router.get('/api/getRoles/auth',$middleware.auth, $controller.adminConfigController.getRoles)
-
-  // 菜单
-  router.post('/api/menu/list/auth', $middleware.auth, $controller.adminConfigController.getMenulist)
-
-  // 路由
-  router.post('/api/route/list/auth', $middleware.auth, $controller.adminConfigController.getRoutelist)
-
-  // user相关
-  router.get('/api/user/getUserInfo/auth', $middleware.auth, $controller.adminUserController.getUserInfo)
 
   // 登录
-  router.post('/api/login', $controller.adminAuthController.login)
-  // router.get('/api/getCaptcha', $controller.common.getCaptcha)
+  router.post('/api/login', $controller.authController.login)
+
+  // user相关
+  router.get('/api/user/getUserInfo/auth', $middleware.auth, $controller.userController.getUserInfo)
+  router.post('/api/user/create/auth', $middleware.auth, $controller.userController.createUser)
+
+  // 后台配置接口
+  router.get('/api/route/auth',$middleware.auth, $controller.configController.getRoute)
+  router.get('/api/permission/ui/auth',$middleware.auth, $controller.configController.getUiPermission)
+
+  router.get('/api/game/room/create/auth', $middleware.auth, $controller.gameController.createRoom)
+  router.get('/api/game/room/info/auth', $middleware.auth, $controller.gameController.getRoomInfo)
+  router.get('/api/game/room/join/auth', $middleware.auth, $controller.gameController.joinRoom)
+  router.get('/api/game/desk/seatIn/auth', $middleware.auth, $controller.gameController.seatIn)
 
 }

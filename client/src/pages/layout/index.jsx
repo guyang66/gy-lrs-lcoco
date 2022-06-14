@@ -23,13 +23,12 @@ const Main = (props) => {
   },[])
 
   return (
-    <Layout style={{minHeight: "100vh", height: '100%'}}>
+    <Layout style={{minHeight: "100vh", width:'100%',maxWidth:'500px', position: 'relative'}}>
       <Layout>
         {
           loading ? (<FullLoading />) : (
             <Switch>
-              <Route exact path="/" key='main' render={()=><Redirect to='/admin/index' />} />
-              <Route exact path="/admin/" key='main' render={()=><Redirect to='/admin/index' />} />
+              <Route exact path="/" key='index' render={()=><Redirect to='/index' />} />
               {/* 权限组件 */}
               {routeMap.map(
                 (route) => <AuthRoute key={route.key} {...route} />
@@ -52,7 +51,7 @@ const Main = (props) => {
               )}
               {
                 // logoutDialog 说明token存在，只是服务端清空了登录信息
-                logoutDialog ? null : <Redirect to='/admin/404' />
+                logoutDialog ? null : <Redirect to='/404' />
               }
             </Switch>
           )

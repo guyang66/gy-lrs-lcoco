@@ -4,14 +4,6 @@ const urlPrefix = '/api/'
 
 export default {
 
-  getUserMenu(params) {
-    return fetch({
-      url: urlPrefix + 'menu/auth',
-      method: 'get',
-      params,
-    })
-  },
-
   getRoute(params) {
     return fetch({
       url: urlPrefix + 'route/auth',
@@ -20,21 +12,6 @@ export default {
     })
   },
 
-  getMenuList(param) {
-    return fetch({
-      url: urlPrefix + 'menu/list/auth',
-      method: 'post',
-      data: param,
-    })
-  },
-
-  getRouteList(param) {
-    return fetch({
-      url: urlPrefix + 'route/list/auth',
-      method: 'post',
-      data: param,
-    })
-  },
   getUiPermission(params) {
     return fetch({
       url: urlPrefix + 'permission/ui/auth',
@@ -42,4 +19,37 @@ export default {
       params,
     })
   },
+
+  createRoom (params) {
+    return fetch({
+      url: urlPrefix + 'game/room/create/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  getRoomInfo (params) {
+    return fetch({
+      url: urlPrefix + 'game/room/info/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  joinRoom (params) {
+    return fetch({
+      url: urlPrefix + 'game/room/join/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  seatIn (params) {
+    return fetch({
+      url: urlPrefix + 'game/desk/seatIn/auth',
+      method: 'get',
+      params,
+    })
+  }
+
 }

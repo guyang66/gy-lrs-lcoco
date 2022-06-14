@@ -40,7 +40,7 @@ const AuthRoute = (props) => {
       />
     )
   }
-  return backUrl ? <Redirect to={backUrl} /> : <Redirect to="/admin/403" />
+  return backUrl ? <Redirect to={backUrl} /> : <Redirect to="/403" />
 }
 export default inject('appStore')(observer(AuthRoute))
 

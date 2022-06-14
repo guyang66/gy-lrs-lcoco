@@ -5,19 +5,19 @@ import Login from '@pages/login'
 // 公共路由不需要走服务端。
 const publicPageRoutes = [
   {
-    path: '/admin/login',
+    path: '/login',
     component: Login,
     exact: true,
     key: 'login',
   },
   {
-    path: '/admin/403',
+    path: '/403',
     component: AccessDeny,
     exact: true,
     key: 'error-403',
   },
   {
-    path: '/admin/404',
+    path: '/404',
     component: NotFount,
     exact: true,
     key: 'error-404',

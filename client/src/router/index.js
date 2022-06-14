@@ -29,7 +29,7 @@ const Router = props => {
         <Route
           render={()=>{
             if(!token){
-              return <Redirect to="/admin/login" />
+              return <Redirect to="/login" />
             }
             return <Layout />
           }}

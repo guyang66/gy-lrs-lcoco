@@ -90,6 +90,7 @@ const initRouter = function(app){
 
 function initService(app){
   let services = {};
+  //todo: 每天定时清除游戏超过12小时的局
   scanFilesByFolder('../service',(filename, service)=>{
     services[filename] = service(app);
   })
@@ -189,6 +190,24 @@ function initSchedule (app) {
   return schedules;
 }
 
+const initWs = function (app) {
+  const ws = require("nodejs-websocket")
+  const server = ws.createServer(function (connection){
+    connection.on("text", function (str) {
+      console.log("Received "+str)
+      connection.sendText(str.toUpperCase()+"!!!")
+    })
+    connection.on("close", function (code, reason) {
+      console.log("Connection closed")
+      console.log(code,reason)
+    })
+    connection.on("error", function (code, reason) {
+      console.log(code,reason)
+    })
+  }).listen(6003)
+  return server
+}
+
 module.exports = {
   initController,
   initRouter,
@@ -203,4 +222,5 @@ module.exports = {
   initSchedule,
   initConstants,
   initErrorCode,
+  initWs,
 }

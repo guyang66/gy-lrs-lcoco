@@ -1,7 +1,16 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken')
 const errorCode = require('../../common/errorCode')
-
+const getRandom = function (n, m) {
+  n = Number(n);
+  m = Number(m);
+  if(n > m){
+    let tmp = n;
+    n = m;
+    m = tmp
+  }
+  return Math.floor(Math.random() * (m - n) + n);
+}
 module.exports = app => ({
 
   Result : {
@@ -200,4 +209,13 @@ module.exports = app => ({
     return await jwt.decode(token)
   },
 
+  getRandomCode () {
+    let codeSet = '0123456789'
+    let str = '';
+    for (let i = 0; i < 6; i ++) {
+      let ran = getRandom(0, 6);
+      str += codeSet.charAt(ran);
+    }
+    return str
+  },
 })
