@@ -16,6 +16,7 @@ const Index = (props) => {
   roomId = '62a7f8994a7b0329c60cfe0d'
 
   const [roomDetail, setRoomDetail] = useState({})
+  const [gameDetail, setGameDetail] = useState({})
   const [seat, setSeat] = useState([])
 
   const [kick, setKick] = useState(false)
@@ -33,8 +34,29 @@ const Index = (props) => {
     apiConfig.getRoomInfo({id: roomId}).then(data=>{
       console.log(data)
       setRoomDetail(data)
-      initSeat(data)
+      if(data.status === 0){
+        initSeat(data)
+      } else if (data.status === 1) {
+        initGame(data)
+      }
     }).catch(error=>{
+      console.log('发生了错误！',error)
+      setErrorPage(true)
+    })
+  }
+
+  const initGame = (data) => {
+    if(!data.gameId){
+      console.log(data)
+      console.log('前端：游戏id不存在')
+      message.warn('游戏id不存在！')
+      return
+    }
+    apiConfig.getGameInfo({id: data.gameId, roomId: data._id}).then(data=>{
+      console.log(data)
+      setGameDetail(data)
+    }).catch(error=>{
+      console.log('发生了错误！',error)
       setErrorPage(true)
     })
   }
@@ -155,106 +177,118 @@ const Index = (props) => {
           </div>
         </div>
 
-        <div className="room-content">
-          <div className="normal-title">桌/座位（点击空座位即可入座）：</div>
-          <div className="desk-content mar-t5">
-            {
-              seat.map(item=>{
-                return (
-                  <div key={item.key} className="seat-cell mar-5 FBH FBAC FBJC">
-                    {
-                      kick ? (
-                        <div className="FBH FBAC FBJC" onClick={()=>{kickPlayer(item)}}>
-                          <div className={cls({
-                              'seat-in': item.player,
-                              'empty-seat': !item.player
-                            })}>
-                            {item.name}
-                          </div>
-                          {
-                            item.player ? <div className="cell-text seat-status mar-l5">
-                              <Button className="color-red kick-btn">踢人</Button>
-                            </div> : <div className="cell-text seat-status mar-l5">{' '}</div>
-                          }
-                        </div>
-                      ) : (
-                        <div className="FBH FBAC FBJC" onClick={()=>{seatIn(item.key)}} style={{cursor: 'pointer'}}>
-                          <div className={cls({
-                            'seat-in': item.player,
-                            'empty-seat': !item.player
-                          })}>
-                            {item.name}
-                          </div>
-                          {
-                            item.player ? <div className="cell-text color-success seat-status mar-l5">
-                              {item.player.name}
-                            </div> : <div className="cell-text color-red seat-status mar-l5">空缺</div>
-                          }
-                        </div>
-                      )
-                    }
-                  </div>
-                )
-              })
-            }
-          </div>
-          <div className="normal-title mar-t10">等待区（尚未入座的玩家）：</div>
-          <div className="wait-content mar-t5 FBH">
-            {
-              (roomDetail.waitPlayer || []).map(item=>{
-                return <div className="wait-cell mar-10" key={'wait-cell' + item}>{item.name}</div>
-              })
-            }
-          </div>
+        {
+          roomDetail.status === 0 ? (
+            <div className="room-content">
+              <div className="normal-title">桌/座位（点击空座位即可入座）：</div>
+              <div className="desk-content mar-t5">
+                {
+                  seat.map(item=>{
+                    return (
+                      <div key={item.key} className="seat-cell mar-5 FBH FBAC FBJC">
+                        {
+                          kick ? (
+                            <div className="FBH FBAC FBJC" onClick={()=>{kickPlayer(item)}}>
+                              <div className={cls({
+                                'seat-in': item.player,
+                                'empty-seat': !item.player
+                              })}>
+                                {item.name}
+                              </div>
+                              {
+                                item.player ? <div className="cell-text seat-status mar-l5">
+                                  <Button className="color-red kick-btn">踢人</Button>
+                                </div> : <div className="cell-text seat-status mar-l5">{' '}</div>
+                              }
+                            </div>
+                          ) : (
+                            <div className="FBH FBAC FBJC" onClick={()=>{seatIn(item.key)}} style={{cursor: 'pointer'}}>
+                              <div className={cls({
+                                'seat-in': item.player,
+                                'empty-seat': !item.player
+                              })}>
+                                {item.name}
+                              </div>
+                              {
+                                item.player ? <div className="cell-text color-success seat-status mar-l5">
+                                  {item.player.name}
+                                </div> : <div className="cell-text color-red seat-status mar-l5">空缺</div>
+                              }
+                            </div>
+                          )
+                        }
+                      </div>
+                    )
+                  })
+                }
+              </div>
+              <div className="normal-title mar-t10">等待区（尚未入座的玩家）：</div>
+              <div className="wait-content mar-t5 FBH">
+                {
+                  (roomDetail.waitPlayer || []).map(item=>{
+                    return <div className="wait-cell mar-10" key={'wait-cell' + item}>{item.name}</div>
+                  })
+                }
+              </div>
 
-          {
-            helper.hasCPermission('system.host', appStore) ? <Button
-              size="large"
-              className={cls({
-                'btn-primary': !!roomDetail.seatStatus,
-                'btn-info': !roomDetail.seatStatus,
-                'mar-t10 full-btn': true,
-              })}
-              disabled={!roomDetail.seatStatus}
-              onClick={
-                ()=>{
-                  startGame()
+              {
+                helper.hasCPermission('system.host', appStore) ? <Button
+                  size="large"
+                  className={cls({
+                    'btn-primary': !!roomDetail.seatStatus,
+                    'btn-info': !roomDetail.seatStatus,
+                    'mar-t10 full-btn': true,
+                  })}
+                  disabled={!roomDetail.seatStatus}
+                  onClick={
+                    ()=>{
+                      startGame()
+                    }
+                  }
+                >
+                  开始游戏
+                </Button> : null
+              }
+              {
+                helper.hasCPermission('system.host', appStore) ? <Button
+                  className={cls({
+                    'btn-danger': !kick,
+                    'btn-info': kick,
+                    'mar-t10 full-btn': true,
+                  })}
+                  size="large"
+                  onClick={
+                    ()=>{
+                      setKick(!kick)
+                    }
+                  }
+                >
+                  {kick ? '取消踢人' : '踢人'}
+                </Button> : null
+              }
+              <Button
+                className="btn-warning mar-t10 full-btn"
+                size="large"
+                onClick={
+                  ()=>{
+                    setNewName(user.name)
+                    setModifyModal(true)
+                  }
                 }
-              }
-            >
-              开始游戏
-            </Button> : null
-          }
-          {
-            helper.hasCPermission('system.host', appStore) ? <Button
-              className={cls({
-                'btn-danger': !kick,
-                'btn-info': kick,
-                'mar-t10 full-btn': true,
-              })}
-              size="large"
-              onClick={
-                ()=>{
-                  setKick(!kick)
-                }
-              }
-            >
-              {kick ? '取消踢人' : '踢人'}
-            </Button> : null
-          }
-          <Button
-            className="btn-warning mar-t10 full-btn"
-            size="large"
-            onClick={
-              ()=>{
-                setNewName(user.name)
-                setModifyModal(true)
-              }
-            }
-          >
-            修改昵称
-          </Button>
-        </div>
+              >
+                修改昵称
+              </Button>
+            </div>
+          ) : null
+        }
+
+        {
+          roomDetail.status === 1 ? (
+            <div className="game-content">
+              游戏区
+            </div>
+          ) : null
+        }
 
         <div className="footer">
           <Button
@@ -270,7 +304,6 @@ const Index = (props) => {
           </Button>
         </div>
       </div>
-
 
       <Modal
         title="修改昵称"

@@ -5,6 +5,7 @@ module.exports = app => {
     Object.assign({}, baseModel, {
       name: { type: String, default: '游戏房间' }, // 房间名字
       status: { type: Number, default: 0 },  // 0：准备中/未开始, 1：进行游戏中 , 2: 已销毁
+      gameId: { type: String, default: null }, // status = 1 时，初始化gameId
       password: { type: String, required: [true, '房间密码不能为空！']},
       owner: { type: String, required: [true, '房间创建者不能为空！']}, // 房间归属者（创建者）
       v1: { type: String }, // 座位1

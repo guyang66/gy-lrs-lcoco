@@ -43,9 +43,9 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1, '当前房间已不存在！')
       return
     }
-    if(roomInstance.status !== 0){
+    if(roomInstance.status === 2){
       // 只有准备中的房间才能获取房间信息，观战除外，一步一步来
-      ctx.body = $helper.Result.fail(-1, '当前房间已在游戏中或已游戏结束！')
+      ctx.body = $helper.Result.fail(-1, '游戏结束！')
       return
     }
     let currentUser = await $service.baseService.userInfo()
@@ -126,6 +126,7 @@ module.exports = app => ({
       status: roomInstance.status,
       seat: allSeatInfo,
       seatStatus: seatStatus,
+      gameId: roomInstance.gameId
     }
     ctx.body = $helper.Result.success(model)
   },
@@ -396,7 +397,7 @@ module.exports = app => ({
    */
   async gameStart () {
     const { ctx, $service, $helper, $model, $ws } = app
-    const { room, user } = $model
+    const { room, user, game, player, vision, record } = $model
     const { id } = ctx.query
     if(!id || id === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -439,8 +440,255 @@ module.exports = app => ({
     // todo: 怎么设计游戏
     // 游戏实例, 游戏信息   id、roomId、owner、状态（进行中、已结束）、阶段（第一天、第二天、、、）玩家参与者、
     // 玩家实例player id、roomId、gameId、 身份、阵营、死亡状态、技能状态、
-    // 视野实例 ，   id、roomId、gameId、from：1号玩家  to：2号玩家   0:未知 1：知道阵容，2：完全知道身份
+    // 视野实例 id、roomId、gameId、from：1号玩家  to：2号玩家   0:未知 1：知道阵容，2：完全知道身份
     // 记录：
-    //
+
+    // 创建游戏
+
+    let gameObject = {
+      roomId: roomInstance._id,
+      owner: roomInstance.owner,
+      status: 1,
+      stage: 0, // 幕布
+      day: 1, // 第一天
+      v1: roomInstance.v1,
+      v2: roomInstance.v2,
+      v3: roomInstance.v3,
+      v4: roomInstance.v4,
+      v5: roomInstance.v5,
+      v6: roomInstance.v6,
+      v7: roomInstance.v7,
+      v8: roomInstance.v8,
+      v9: roomInstance.v9,
+    }
+    let gameInstance = await $service.baseService.save(game, gameObject)
+
+    // 创建player
+    const roleArray = ['wolf', 'wolf', 'wolf', 'villager', 'villager', 'villager', 'predictor', 'witch', 'hunter']
+    // todo：后面入库把
+    const skillMap = {
+      wolf: [{
+        name: '自爆',
+        key: 'boom',
+        status: 1,
+      }],
+      predictor: [{
+        name: '查验',
+        key: 'check',
+        status: 1,
+      }],
+      witch: [
+        {
+          name: '解药',
+          key: 'antidote',
+          status: 1,
+        },
+        {
+          name: '毒药',
+          key: 'poison',
+          status: 1,
+        }
+      ],
+      hunter: [
+        {
+          name: '开枪',
+          key: 'shoot',
+          status: 0, // 猎人最初不能开枪
+        }
+      ],
+      villager: []
+    }
+    let randomPlayer = $helper.getRandomNumberArray(1,9,9, roleArray)
+    console.log('随机玩家')
+    console.log(randomPlayer)
+    for(let i =0; i < randomPlayer.length; i ++ ){
+      let item = randomPlayer[i]
+      let p = {
+        roomId: roomInstance._id,
+        gameId: gameInstance._id,
+        username: roomInstance['v' + (item.number)],
+        role: item.role,
+        camp: item.role === 'wolf' ? 0 : 1, // 狼人阵营 ：0 ； 好人阵营：1
+        status: 1, // 都是存货状态
+        skill: skillMap[item.role],
+        position: item.number
+      }
+      // 依次同步创建9个玩家
+      await $service.baseService.save(player, p)
+    }
+
+    const getVisionKey = (from, to) => {
+      if(from.number === to.number){
+        return 2
+      }
+      let fromRole = from.role
+      let toRole = to.role
+      if(fromRole === 'wolf' && toRole === 'wolf'){
+        return 2
+      }
+      // 村民、猎人、女巫没有视野
+      // 预言家只有查验之后有视野
+      return 0
+    }
+    console.log('游戏实例')
+    console.log(gameInstance)
+    // 创建视野对象
+    for(let i = 0 ; i < randomPlayer.length; i++){
+      for(let j = 0 ; j < randomPlayer.length; j++){
+        let v = {
+          roomId: roomInstance._id,
+          gameId: gameInstance._id,
+          from: gameInstance['v' + randomPlayer[i].number],
+          to: gameInstance['v' + randomPlayer[j].number],
+          status: getVisionKey(randomPlayer[i], randomPlayer[j])
+        }
+        // 创建9 x 9 = 81个视野
+        await $service.baseService.save(vision, v)
+      }
+    }
+    let recordObject = {
+      roomId: roomInstance._id,
+      gameId: gameInstance._id,
+      content: '游戏开始！',
+      isCommon: 1,
+    }
+    // record
+    await $service.baseService.save(record, recordObject)
+    // 改变房间状态
+    await $service.baseService.updateById(room, roomInstance._id,{ status: 1, gameId: gameInstance._id})
+    $ws.connections.forEach(function (conn) {
+      //todo:只能对应的频道发消息
+      conn.sendText('refreshRoom')
+    })
+    ctx.body = $helper.Result.success('ok')
+  },
+
+  /**
+   * 根据user获取游戏信息
+   * @returns {Promise<void>}
+   */
+  async getGameInfo () {
+    const { ctx, $service, $helper, $model, $ws } = app
+    const { room, user, game, player, vision, record } = $model
+    const { id } = ctx.query
+    if(!id || id === ''){
+      ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
+      return
+    }
+    let gameInstance = await $service.baseService.queryById(game, id)
+    if(!gameInstance){
+      ctx.body = $helper.Result.fail(-1,'该游戏不存在！')
+      return
+    }
+    if(gameInstance.status === 0){
+      ctx.body = $helper.Result.fail(-1,'该游戏已结束！')
+      return
+    }
+    console.log(gameInstance)
+    let currentUser = await $service.baseService.userInfo()
+    // 查询你在游戏中的状态
+    let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
+    if(!currentPlayer){
+      ctx.body = $helper.Result.fail(-1,'未查询到你在该游戏中')
+      return
+    }
+
+    const getPlayerInfo = async (self) => {
+      let playerInfo = []
+      for(let i =0; i < 9; i ++) {
+        console.log(self)
+        let un = gameInstance['v' + (i + 1)]
+        // 查询其他玩家信息
+        let otherPlayer = await $service.baseService.queryOne(player, {username:un, gameId: gameInstance._id, roomId: gameInstance.roomId})
+        // 查询自己对该玩家的视野
+        let visionInstance = await $service.baseService.queryOne(vision, {gameId: gameInstance._id, roomId: gameInstance.roomId, from: self.username, to: un})
+        playerInfo.push({
+          isSelf: un === self.username, // 是否是自己
+          camp: visionInstance.status === 0 ? null : otherPlayer.camp, // 是否知晓阵营
+          status: otherPlayer.status, // 是否死亡
+          role: visionInstance.status === 2 ? otherPlayer.role : null, // 是否知晓角色
+          position: otherPlayer.position
+        })
+      }
+      return playerInfo
+    }
+
+    const getSkillStatus = (self) => {
+      if(!self.skill || self.skill.length < 1){
+        return []
+      }
+      let skill = self.skill
+      let tmp = []
+      skill.forEach(item=>{
+        if(item.key === 'boom'){
+          tmp.push({
+            key: item.key,
+            name: item.name,
+            canUse: gameInstance.stage === 5 && self.status === 1, // 自爆只能在白天发言阶段能用
+            show: gameInstance.stage === 5 && self.status === 1, // (是否展示在前端)存活且轮到自己行动
+          })
+        } else if (item.key === 'check') {
+          tmp.push({
+            key: item.key,
+            name: item.name,
+            canUse: gameInstance.stage === 1 && self.status === 1, // 预言家查验，只要存活可一直使用
+            show: gameInstance.stage === 1 && self.status === 1, // (是否展示在前端)存活且轮到自己行动，所以预言家在狼人之前行动，避免刚好被刀（第一晚可报查验，之后用不用也无法开口了），导致当晚技能用不了
+          })
+        } else if (item.key === 'antidote' || item.key === 'poison') {
+          tmp.push({
+            key: item.key,
+            name: item.name,
+            canUse: gameInstance.stage === 3 && item.status === 1 && self.status === 1, // 解药/毒药阶段3且还未使用
+            show: gameInstance.stage === 3 && self.status === 1, // (是否展示在前端)存活且轮到自己行动
+          })
+        } else if (item.key === 'shoot') {
+          const computeHunterSkill = (stage) => {
+            if(item.status !== 1){
+              return false
+            }
+            if(stage === 4 && self.status === 0){
+              // 经过了晚上的洗礼，如果死亡
+              return self.outReason !== 'poison'
+            }
+            return stage === 7 && self.status === 0;
+          }
+          tmp.push({
+            key: item.key,
+            name: item.name,
+            canUse: computeHunterSkill(gameInstance.stage), // 猎人晚上不死于毒药可开枪, 被投出去可开枪
+            show: gameInstance.stage === 4 || gameInstance.stage === 7 , // 是否展示在前端
+          })
+        }
+      })
+      return tmp
+    }
+
+    let gameInfo = {
+      _id: gameInstance._id,
+      roomId: gameInstance.roomId,
+      status: gameInstance.status,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      roleInfo: {
+        role: currentPlayer.role,
+        skill: currentPlayer.skill,
+        username: currentPlayer.username,
+        name: currentUser.name,
+        position:currentPlayer.positon,
+        status: currentPlayer.status,
+        camp: currentPlayer.camp
+      },
+      playerInfo: await getPlayerInfo(currentPlayer),
+      skill: getSkillStatus(currentPlayer),
+      action: [
+        {
+          key: 'vote',
+          name: '投票',
+          use: gameInstance.stage === 6 && currentPlayer.status === 1,
+          show: gameInstance.stage === 6 && currentPlayer.status === 1,
+        }
+      ]
+    }
+    ctx.body = $helper.Result.success(gameInfo)
   }
 })

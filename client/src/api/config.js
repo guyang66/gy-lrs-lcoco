@@ -82,6 +82,14 @@ export default {
       method: 'get',
       params,
     })
+  },
+
+  getGameInfo (params) {
+    return fetch({
+      url: urlPrefix + 'game/info/auth',
+      method: 'get',
+      params,
+    })
   }
 
 }
