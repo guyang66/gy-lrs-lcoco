@@ -35,6 +35,8 @@ module.exports = app => ({
     let obj = {
       username: username,
       name: name,
+      defaultRole: role,
+      defaultRoleName: '',
       password: pass,
       roles: [role]
     }

@@ -105,7 +105,7 @@ const Index = (props) => {
                   setNewPlayer({
                     username: '',
                     name: '玩家',
-                    password: '123',
+                    password: '1',
                     role:'player'
                   })
                   setCreateUserModal(true)

@@ -50,6 +50,38 @@ export default {
       method: 'get',
       params,
     })
+  },
+
+  kickPlayer (params) {
+    return fetch({
+      url: urlPrefix + 'game/room/kickPlayer/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  quitRoom (params) {
+    return fetch({
+      url: urlPrefix + 'game/room/quit/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  modifyNameInRoom (params) {
+    return fetch({
+      url: urlPrefix + 'game/room/modifyName/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  startGame (params) {
+    return fetch({
+      url: urlPrefix + 'game/start/auth',
+      method: 'get',
+      params,
+    })
   }
 
 }

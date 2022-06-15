@@ -15,6 +15,12 @@ module.exports = app => {
   router.get('/api/game/room/create/auth', $middleware.auth, $controller.gameController.createRoom)
   router.get('/api/game/room/info/auth', $middleware.auth, $controller.gameController.getRoomInfo)
   router.get('/api/game/room/join/auth', $middleware.auth, $controller.gameController.joinRoom)
+  router.get('/api/game/room/quit/auth', $middleware.auth, $controller.gameController.quitRoom)
+  router.get('/api/game/room/modifyName/auth', $middleware.auth, $controller.gameController.modifyNameInRoom)
   router.get('/api/game/desk/seatIn/auth', $middleware.auth, $controller.gameController.seatIn)
+  router.get('/api/game/room/kickPlayer/auth', $middleware.auth, $controller.gameController.kickPlayer)
+
+  router.get('/api/game/start/auth', $middleware.auth, $controller.gameController.gameStart)
+
 
 }
