@@ -224,7 +224,8 @@ module.exports = app => ({
    * @param min
    * @param max
    * @param length
-   * @returns {[]|number}
+   * @param roleArray
+   * @returns {this}
    */
   getRandomNumberArray (min, max, length = 9, roleArray) {
     let arr = []
@@ -249,5 +250,52 @@ module.exports = app => ({
       }
     }
     return arr.sort(function (a,b){return a.number - b.number})
+  },
+
+
+  findMaxInArray (array) {
+    let map = {}
+    array.forEach((item,index) => {
+      if(array.indexOf(item) === index){
+        map[item] = 1
+      }else{
+        map[item] = map[item] + 1
+      }
+    })
+
+    let max = 0
+    let target = array[0]
+    for(let key in map) {
+      if(map[key] > max){
+        max = map[key]
+        target = key
+      }
+    }
+    return target
+  },
+
+  findMaxValue (arr) {
+    let obj = {}
+    for(let i = 0; i < arr.length; i++){
+      let arr2 = Object.keys(obj)
+      if(arr2.indexOf(String(arr[i])) !== -1){
+        obj[arr[i]]++
+      } else {
+        obj[arr[i]] = 1
+      }
+    }
+    let max = 0
+    let ans = []
+    for(let i in obj){
+      if(obj[i] > max){
+        max = obj[i]
+        ans.length = 0
+        ans.push(i)
+      }else if(obj[i] === max){
+        ans.push(i)
+      }
+    }
+    return ans
   }
+
 })

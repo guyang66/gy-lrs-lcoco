@@ -7,10 +7,13 @@ module.exports = app => {
       gameId: { type: String, required: [true,'gameId不能为空！']},
       userId: { type: String},
       username: { type: String, required: [true,'username不能为空！']},
-      role:  { type: String, required: [true,'身份角色不能为空！']},
+      name: { type: String},
+      role: { type: String, required: [true,'身份角色不能为空！']},
+      roleName: { type: String },
       camp: {type: Number, default: 0}, // 阵营 0：狼人阵营 1：神民阵营
+      campName: { type: String },
       status: {type: Number, default: 1}, // 状态：0：死亡 ， 1：存活
-      outReason: { type: String}, // 出局原因， 'vote': 被投票出局， 'wolf': 被浪到出局，'shoot':'被猎人枪','poison':被女巫毒死
+      outReason: { type: String}, // 出局原因，vote: 被投票出局，wolf: 被狼刀，shoot: 被猎人枪，poison: 被女巫毒死
       position: {type: Number, required: [true,'位置不能为空！']}, // 座位号
       skill: [], // 拥有的技能  'boom'：自爆；'check': 查验, 'antidote':解药, 'poison':'毒药', 'shoot': '开枪'
       // skillStatus:{type: Number, default: 0}, // 技能状态 0:不能使用 1：能使用

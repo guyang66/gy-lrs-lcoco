@@ -90,6 +90,70 @@ export default {
       method: 'get',
       params,
     })
+  },
+
+  nextStage (params) {
+    return fetch({
+      url: urlPrefix + 'game/nextStage/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  userNextStage (params) {
+    return fetch({
+      url: urlPrefix + 'game/userNextStage/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  gameRecord (params) {
+    return fetch({
+      url: urlPrefix + 'game/record/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  checkPlayerRole (params) {
+    return fetch({
+      url: urlPrefix + 'game/checkPlayer/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  assaultPlayer (params) {
+    return fetch({
+      url: urlPrefix + 'game/assaultPlayer/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  antidotePlayer (params) {
+    return fetch({
+      url: urlPrefix + 'game/antidotePlayer/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  votePlayer (params) {
+    return fetch({
+      url: urlPrefix + 'game/votePlayer/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  poisonPlayerRole (params) {
+    return fetch({
+      url: urlPrefix + 'game/poisonPlayer/auth',
+      method: 'get',
+      params,
+    })
   }
 
 }
