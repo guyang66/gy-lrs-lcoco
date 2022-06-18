@@ -46,49 +46,6 @@ module.exports = app => ({
     return r
   },
 
-  async getList (page = 1, pageSize = 10, params) {
-    const { errorLogger } = app.$log4
-    const { user } = app.$model
-    let { searchKey, status } = params
-    status = status - 0
-    let list = []
-    let searchParams = {}
-    let sortParam = {
-      _id: -1
-    }
-
-    if(searchKey && searchKey !== ''){
-      let p1 = {}
-      let p2 = {
-        "$or": [
-          {
-            "username":new RegExp(searchKey,'i')
-          },
-          {
-            "name":new RegExp(searchKey,'i')
-          }
-        ]
-      }
-      if(status !== undefined && status !== null && status !== 2){
-        p1.status = status
-      }
-      searchParams = {
-        "$and": [p1, p2]
-      }
-    } else {
-      if(status !== undefined && status !== null && status !== 2){
-        searchParams.status = status
-      }
-    }
-
-    let total = await user.find(searchParams).countDocuments()
-    list = await user.find(searchParams, null, {skip: pageSize * (page < 1 ? 0 : (page - 1)), limit: (pageSize - 0), sort: sortParam }, function (err){
-      if(err){
-        errorLogger.error(err)
-      }
-    })
-    return { list, total }
-  },
   /**
    * 超级管理员创建一个用户
    * @param username
@@ -103,9 +60,9 @@ module.exports = app => ({
         password: password,
         email: '',
         name: '默认姓名',
-        roles: ['guest'],
-        defaultRole: 'guest',
-        defaultRoleName: '游客',
+        roles: ['player'],
+        defaultRole: 'player',
+        defaultRoleName: '玩家',
         status: 1
       }
     )

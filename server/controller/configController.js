@@ -5,11 +5,15 @@ module.exports = app => ({
    */
   async getRoute() {
     const { ctx, $service, $helper } = app
-    let r = await $service.adminRouteService.getAdminRoute()
+    let r = await $service.routeService.getRoute()
     //todo: 只有成功的return 都要加try catch 处理错误
     ctx.body = $helper.Result.success(r)
   },
 
+  /**
+   * 获取ui权限
+   * @returns {Promise<void>}
+   */
   async getUiPermission () {
     const { ctx, $service, $helper, $model  } = app
     const { uiPermission } = $model

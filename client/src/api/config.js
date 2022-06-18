@@ -22,7 +22,7 @@ export default {
 
   createRoom (params) {
     return fetch({
-      url: urlPrefix + 'game/room/create/auth',
+      url: urlPrefix + 'room/create/auth',
       method: 'get',
       params,
     })
@@ -30,7 +30,7 @@ export default {
 
   getRoomInfo (params) {
     return fetch({
-      url: urlPrefix + 'game/room/info/auth',
+      url: urlPrefix + 'room/info/auth',
       method: 'get',
       params,
     })
@@ -38,7 +38,7 @@ export default {
 
   joinRoom (params) {
     return fetch({
-      url: urlPrefix + 'game/room/join/auth',
+      url: urlPrefix + 'room/join/auth',
       method: 'get',
       params,
     })
@@ -46,7 +46,7 @@ export default {
 
   seatIn (params) {
     return fetch({
-      url: urlPrefix + 'game/desk/seatIn/auth',
+      url: urlPrefix + 'room/seat/auth',
       method: 'get',
       params,
     })
@@ -54,7 +54,7 @@ export default {
 
   kickPlayer (params) {
     return fetch({
-      url: urlPrefix + 'game/room/kickPlayer/auth',
+      url: urlPrefix + 'room/kick/auth',
       method: 'get',
       params,
     })
@@ -62,7 +62,7 @@ export default {
 
   quitRoom (params) {
     return fetch({
-      url: urlPrefix + 'game/room/quit/auth',
+      url: urlPrefix + 'room/quit/auth',
       method: 'get',
       params,
     })
@@ -70,7 +70,7 @@ export default {
 
   modifyNameInRoom (params) {
     return fetch({
-      url: urlPrefix + 'game/room/modifyName/auth',
+      url: urlPrefix + 'room/modifyName/auth',
       method: 'get',
       params,
     })

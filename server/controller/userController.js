@@ -5,6 +5,7 @@ module.exports = app => ({
    * @returns {Promise<void>}
    */
   async createUser() {
+    //todo: url权限要跟上
     const { ctx, $service, $helper, $model } = app
     const { user } = $model
     const { username, name, password, role } = ctx.request.body
@@ -67,51 +68,5 @@ module.exports = app => ({
     let realUser = await $service.userService.getUserInfoById(user._id)
     ctx.userInfo = realUser
     ctx.body = $helper.Result.success(realUser)
-  },
-
-  /**
-   * 更新用户信息
-   * @returns {Promise<void>}
-   */
-  async updateUserInfo () {
-    const { ctx, $service, $helper, $model } = app
-    const { user, role } = $model
-    const { content, id } = ctx.request.body
-    if(!id){
-      ctx.body = $helper.Result.fail(-1,'参数有误（id不存在）！')
-      return
-    }
-
-    let dingNumber = content.dingNumber
-    if(dingNumber !== null && dingNumber !== undefined){
-      dingNumber = content.dingNumber - 0
-      if(!dingNumber || isNaN(content.dingNumber) || dingNumber <= 0){
-        ctx.body = $helper.Result.fail(-1,'工号格式错误或不存在！')
-        return
-      }
-    }
-
-    // 处理默认角色name
-    let roles = await $service.baseService.query(role, {status: 1}) || []
-    if(content.roles && content.roles.length > 0){
-      let currentUser = await $service.baseService.queryById(id, user)
-      let roleInstance = content.roles.find( item =>{
-        return item === currentUser.defaultRole
-      })
-      if(!roleInstance) {
-        content.defaultRole = content.roles[0]
-        content.defaultRoleName = roles.find(role=>{
-          return role.key === content.defaultRole
-        }).name
-      }
-    }
-
-    let r = await $service.baseService.update(id, content, user)
-    if(r){
-      ctx.body = $helper.Result.success(r)
-    } else {
-      ctx.body = $helper.Result.fail(-1, '操作失败！')
-    }
-  },
-
+  }
 })

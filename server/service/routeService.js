@@ -4,11 +4,11 @@ module.exports = app => ({
    * 获取可用权限路由
    * @returns {Promise<*>}
    */
-  async getAdminRoute () {
-    const { adminRoute } = app.$model
+  async getRoute () {
+    const { route } = app.$model
     const { errorLogger } = app.$log4
     // 获取正在使用的路由
-    let r = await adminRoute.find( { status: 1}, selectUserKey, function (err){
+    let r = await route.find( { status: 1}, selectUserKey, function (err){
       if(err){
         errorLogger.error(err)
       }
@@ -25,7 +25,7 @@ module.exports = app => ({
    */
   async getList (page= 1, pageSize = 10, params) {
     const { errorLogger } = app.$log4
-    const { adminRoute } = app.$model
+    const { route } = app.$model
     let { searchKey, status } = params
     let list = []
     let searchParams = {}
@@ -59,8 +59,8 @@ module.exports = app => ({
     }
     let sortParam = {}
 
-    let total = await adminRoute.find(searchParams).countDocuments()
-    list = await adminRoute.find(searchParams, null, {skip: pageSize * (page < 1 ? 0 : (page - 1)), limit: (pageSize - 0), sort : sortParam }, function (err, docs){
+    let total = await route.find(searchParams).countDocuments()
+    list = await route.find(searchParams, null, {skip: pageSize * (page < 1 ? 0 : (page - 1)), limit: (pageSize - 0), sort : sortParam }, function (err, docs){
       if(err){
         errorLogger.error(err)
       }

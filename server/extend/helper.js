@@ -12,7 +12,9 @@ const getRandom = function (n, m) {
   return Math.floor(Math.random() * (m - n) + n);
 }
 module.exports = app => ({
-
+  /**
+   * 封装response对象
+   */
   Result : {
     success (content) {
       return {
@@ -63,7 +65,6 @@ module.exports = app => ({
     return obj
   },
 
-
   isEmpty (obj) {
     return obj === null || obj === undefined || obj === ''
   },
@@ -99,6 +100,11 @@ module.exports = app => ({
     return (h < 10 ? ('0' + h) : h) + ':' + (m < 10 ? ('0' + m) : m ) + ':' + (s < 10 ? ('0' + s) : s)
   },
 
+  /**
+   * 格式日期
+   * @param t
+   * @returns {string}
+   */
   formatDate (t) {
     if(!t){
       t = new Date()
@@ -112,16 +118,6 @@ module.exports = app => ({
     let s = t.getSeconds()
     return this.formatDateYYMMDD(t) + ' ' + (h < 10 ? ('0' + h) : h) + ':' + (m < 10 ? ('0' + m) : m ) + ':' + (s < 10 ? ('0' + s) : s)
   },
-
-  /**
-   * promise-All
-   * @param p
-   * @returns {Promise<unknown[]>}
-   */
-  promiseAll (p) {
-    return Promise.all(p)
-  },
-
   /**
    * 同步等待，延迟
    * @param ms
@@ -129,28 +125,6 @@ module.exports = app => ({
    */
   wait (ms) {
     return new Promise(resolve => setTimeout(() =>resolve(), ms));
-  },
-
-  /**
-   * 获取ip
-   * @param req
-   * @returns {string|null}
-   */
-
-  getClientIP (req) {
-    if(!req.headers){
-      return null
-    }
-    let ip = req.headers['x-forwarded-for'] ||
-      req.ip ||
-      req.connection.remoteAddress ||
-      req.socket.remoteAddress ||
-      req.connection.socket.remoteAddress || '';
-    if(ip.split(',').length>0){
-      ip = ip.split(',')[0]
-    }
-    ip = ip.substr(ip.lastIndexOf(':') + 1, ip.length)
-    return ip
   },
 
   /**
@@ -220,7 +194,7 @@ module.exports = app => ({
   },
 
   /**
-   * 获取随机不重复的玩家数组整数数组
+   * 获取随机不重复的玩家数组（整数数组）
    * @param min
    * @param max
    * @param length
@@ -252,7 +226,11 @@ module.exports = app => ({
     return arr.sort(function (a,b){return a.number - b.number})
   },
 
-
+  /**
+   * 找到数组中重复次数最多的元素
+   * @param array
+   * @returns {string}
+   */
   findMaxInArray (array) {
     let map = {}
     array.forEach((item,index) => {
@@ -274,6 +252,11 @@ module.exports = app => ({
     return target
   },
 
+  /**
+   * 找到数组中重复次数最多的元素，以数组形式返回
+   * @param arr
+   * @returns {[]}
+   */
   findMaxValue (arr) {
     let obj = {}
     for(let i = 0; i < arr.length; i++){
