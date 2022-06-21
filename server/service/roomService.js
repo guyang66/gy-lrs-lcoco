@@ -35,5 +35,41 @@ module.exports = app => ({
     } else {
       return $helper.wrapResult(false, '玩家未入座该房间', -1)
     }
-  }
+  },
+
+  /**
+   * 获取座位上的玩家信息
+   * @param roomId
+   * @param showPlayerInfo 是否显示玩家信息
+   * @returns {Promise<null|[]>}
+   */
+  async getRoomSeatPlayer (roomId, showPlayerInfo = false) {
+    const { $service, $helper, $model } = app
+    const { user, room } = $model
+    if(!roomId){
+      return $helper.wrapResult(false, 'roomId为空！', -1)
+    }
+    let roomInstance = await $service.baseService.queryById(room, roomId)
+    if(!roomInstance){
+      return $helper.wrapResult(false, '房间不存在！', -1)
+    }
+    let count = roomInstance.count || 9
+    let list = []
+    for(let i = 0; i < count; i++){
+      let columnKey = 'v' + (i + 1)
+      let username = roomInstance[columnKey]
+      if(!username){
+        list.push({player: null, position: i + 1, name: (i + 1) + '号'})
+        continue
+      }
+      let userInfo = await $service.baseService.queryOne(user, {username: username}, {username: 1, name: 1})
+      if(userInfo){
+        list.push({player: userInfo, position: i + 1, name: (i + 1) + '号'})
+      } else {
+        list.push({player: null, position: i + 1, name: (i + 1) + '号'})
+      }
+    }
+    return $helper.wrapResult(true, list)
+  },
+
 })

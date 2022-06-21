@@ -14,7 +14,7 @@ const Index = (props) => {
   const {user} = appStore
 
   let roomId =  location.state && location.state.id
-  roomId = '62a7f8994a7b0329c60cfe0d'
+  roomId = '62b05fb40411e736291ec36b'
 
   const [roomDetail, setRoomDetail] = useState({})
   const [gameDetail, setGameDetail] = useState({})
@@ -597,13 +597,6 @@ const Index = (props) => {
         {
           roomDetail.status === 1 ? (
             <div className="game-content">
-              <div className="normal-title">
-                <span>您的名字：</span>
-                <span className="color-orange">{currentRole.name}</span>
-                <span className="mar-l10">您的座位号：</span>
-                <span className="color-main">{currentRole.position + '号'}</span>
-              </div>
-
               <div className="normal-title mar-t5">
                 <span>您的角色：</span>
                 <span className={cls({
@@ -633,10 +626,8 @@ const Index = (props) => {
                 <span className="mar-l10">阶段/回合：</span>
                 <span className="color-main">{'第' + (gameDetail.stage + 1) + '阶段：'}</span>
                 <span className="color-red">{gameDetail.stageName}</span>
-
               </div>
 
-              <div className="normal-title mar-t5">玩家：</div>
               <div className="desk-content mar-t5">
                 {
                   (playerInfo || []).map(item=>{

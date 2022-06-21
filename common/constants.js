@@ -3,6 +3,47 @@ module.exports = {
     SYSTEM_ERROR: -1, // 系统错误
     NOT_LOGIN: -3, // 用户未登录
   },
+  gameModeMap: {
+    'standard_9': ['wolf', 'wolf', 'wolf', 'villager', 'villager', 'villager', 'predictor', 'witch', 'hunter']
+  },
+  skillMap: {
+    wolf: [
+      {
+        name: '袭击',
+        key: 'assault',
+        status: 1,
+      },{
+        name: '自爆',
+        key: 'boom',
+        status: 1,
+      }],
+    predictor: [
+      {
+        name: '查验',
+        key: 'check',
+        status: 1,
+      }],
+    witch: [
+      {
+        name: '解药',
+        key: 'antidote',
+        status: 1,
+      },
+      {
+        name: '毒药',
+        key: 'poison',
+        status: 1,
+      }
+    ],
+    hunter: [
+      {
+        name: '开枪',
+        key: 'shoot',
+        status: 0, // 猎人最开始不能开枪
+      }
+    ],
+    villager: []
+  },
   playerRoleMap: {
     wolf: {
       name: '狼人',
@@ -59,7 +100,6 @@ module.exports = {
       key: 'lastWord'
     },
   },
-
   broadcastMap: {
     '1-0': [
       {

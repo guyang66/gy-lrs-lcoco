@@ -87,6 +87,7 @@ class Application {
 
     // 将ctx注入到app上
     this.$app.use(async (ctx, next) => {
+      //todo: 初步判断是因为中间件设置了ctx，两次请求进来先设置ctx，因为几乎是同一时间，导致第二次直接覆盖了第一次的值，所以2次请求的处理均使用了第二次的值，造出返回值错乱
       this.ctx = ctx;
       await next()
     })

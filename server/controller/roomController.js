@@ -75,40 +75,18 @@ module.exports = app => ({
       }
     }
 
-    // 遍历v1-v9获取座位信息
-    const getSeatInfo = async (key, index = 0) => {
-      if(!roomInstance[key] || roomInstance[key] === ''){
-        return {
-          player: null,
-          position: index + 1,
-          name: (index + 1) + '号'
-        }
-      }
-      let userInfo = await $service.baseService.queryOne(user, {username: roomInstance[key]}, {username: 1, name: 1})
-      if(userInfo){
-        return {
-          player: userInfo,
-          position: index + 1,
-          name: (index + 1) + '号'
-        }
-      }
-      return {
-        player: null,
-        position: index + 1,
-        name: (index + 1) + '号'
-      }
+    let r = await $service.roomService.getRoomSeatPlayer(id)
+    if(!r.result){
+      ctx.body = $helper.Result.fail(r.errorCode, r.errorMessage)
+      return
     }
-
-    let allSeatInfo = []
-    let seatStatus = true
-    for(let i = 0; i < 9; i++){
-      let target = await getSeatInfo('v' + (i + 1), i)
-      allSeatInfo.push(target)
-      if(!target.player){
-        // 如果有空位置，就不能开游戏！
-        seatStatus = 0
+    let seatInfo = r.data
+    let seatStatus = 1
+    seatInfo.forEach(item=>{
+      if(!item.player){
+        seatStatus = 0 // 座位未坐满人
       }
-    }
+    })
 
     let model = {
       waitPlayer: waitPlayerArray,
@@ -117,7 +95,7 @@ module.exports = app => ({
       name: roomInstance.name,
       password: roomInstance.password,
       status: roomInstance.status,
-      seat: allSeatInfo, // 座位信息
+      seat: seatInfo, // 座位信息
       seatStatus: seatStatus, // 是否已做满,0:未坐满，1：已坐满（可开始游戏）
       gameId: roomInstance.gameId
     }
@@ -153,17 +131,14 @@ module.exports = app => ({
       return
     }
 
-    if(!isSeat){
-      // 如果不在座位上，则进入等待区
-      let waitPlayer = roomInstance.wait
-      let exist = waitPlayer.find(p=>{
-        return p === username
-      })
-      if(!exist){
-        let newWait = [...waitPlayer]
-        newWait.push(currentUser.usernamenew)
-        await $service.baseService.updateById(room, roomInstance._id, {wait: newWait})
-      }
+    let waitPlayer = roomInstance.wait
+    let exist = waitPlayer.find(p=>{
+      return p === username
+    })
+    if(!exist){
+      let newWait = [...waitPlayer]
+      newWait.push(currentUser.username)
+      await $service.baseService.updateById(room, roomInstance._id, {wait: newWait})
     }
 
     if(roomInstance.status === 1){
