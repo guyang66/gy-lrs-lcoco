@@ -15,7 +15,7 @@ module.exports = app => ({
     let assaultActionList = await $service.baseService.query(action, {roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage: 2, action: 'assault'})
     if(!assaultActionList || assaultActionList.length < 1){
       let recordObject = {
-        roomId: roomId,
+        roomId: gameInstance.roomId,
         gameId: gameInstance._id,
         day: gameInstance.day,
         stage: gameInstance.stage,
@@ -36,11 +36,11 @@ module.exports = app => ({
     // 找到他们中被杀次数最多的
     let target = $helper.findMaxInArray(usernameList)
     let actionObject = {
-      roomId: roomId,
+      roomId: gameInstance.roomId,
       gameId: gameInstance._id,
       day: gameInstance.day,
       stage: gameInstance.stage,
-      from: currentPlayer.username,
+      from: 'wolf',
       to: target,
       action: 'kill',
     }

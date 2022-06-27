@@ -6,7 +6,7 @@ module.exports = app => ({
    * @returns {string}
    */
   getPlayerNumberString (player) {
-    if(player){
+    if(!player){
       return ''
     }
     return '' + player.position + '号'
@@ -19,7 +19,7 @@ module.exports = app => ({
    * @returns {string}
    */
   getPlayerFullName (player, name) {
-    if(player){
+    if(!player){
       return ''
     }
     return '' + player.position + '号（' + (name ? name : player.name) + ')'

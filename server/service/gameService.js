@@ -2,10 +2,9 @@ module.exports = app => ({
 
   /**
    * 获取可见的玩家信息
-   * @param id
    * @returns {Promise<{result}>}
    */
-  async getPlayerInfoInGame (id) {
+  async getPlayerInfoInGame (ctx,id) {
     const { $service, $helper, $model, $constants } = app
     const { game, player, user, vision } = $model
     const { playerRoleMap } = $constants
@@ -13,7 +12,7 @@ module.exports = app => ({
       return $helper.wrapResult(false, 'gameId为空！', -1)
     }
     let gameInstance = await $service.baseService.queryById(game, id)
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let playerCount = gameInstance.playerCount || 9
     let playerInfo = []
     for(let i =0; i < playerCount; i++) {
@@ -56,17 +55,16 @@ module.exports = app => ({
 
   /**
    * 获取当前玩家在游戏中的技能状态
-   * @param id
    * @returns {Promise<{result}>}
    */
-  async getSkillStatusInGame (id) {
+  async getSkillStatusInGame (ctx, id) {
     const { $service, $helper, $model } = app
     const { game, player, action } = $model
     if(!id){
       return $helper.wrapResult(false, 'gameId为空！', -1)
     }
     let gameInstance = await $service.baseService.queryById(game, id)
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
     if(!currentPlayer.skill || currentPlayer.skill.length < 1){
       return $helper.wrapResult(true, [])
@@ -127,7 +125,7 @@ module.exports = app => ({
         })
       } else if (item.key === 'shoot') {
         const computeHunterSkill = (stage) => {
-          if(item.status !== 1){
+          if(item.status !== 0){
             return false
           }
           if(stage === 4 && currentPlayer.status === 0){
@@ -149,12 +147,11 @@ module.exports = app => ({
 
   /**
    * 获取游戏公告信息
-   * @param id
    * @returns {Promise<{result}>}
    */
-  async getBroadcastInfo(id) {
+  async getBroadcastInfo(ctx, id) {
     const { $service, $helper, $model, $constants } = app
-    const { game, player, user, gameTag } = $model
+    const { game, gameTag } = $model
     const { broadcastMap } = $constants
     if(!id){
       return $helper.wrapResult(false, 'gameId为空！', -1)
@@ -261,17 +258,16 @@ module.exports = app => ({
 
   /**
    * 获取每个玩家独有的系统提示
-   * @param id
    * @returns {Promise<{result}>}
    */
-  async getSystemTips  (id) {
+  async getSystemTips  (ctx, id) {
     const { $service, $helper, $model, $support } = app
-    const { game, player, action } = $model
+    const { game, player, action, gameTag } = $model
     if(!id){
       return $helper.wrapResult(false, 'gameId为空！', -1)
     }
     let gameInstance = await $service.baseService.queryById(game, id)
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
     if(gameInstance.status === 2){
       let info = []
@@ -322,7 +318,7 @@ module.exports = app => ({
         info.push({text: '晚上没有袭击玩家', level: 1})
         return $helper.wrapResult(true, info)
       }
-      let killUsername = checkAction.to
+      let killUsername = killAction.to
       let killPlayer = await $service.baseService.queryOne(player, {gameId: gameInstance._id, roomId: gameInstance.roomId, username: killUsername})
       let info = []
       info.push({text: '你们', level: 1})
@@ -338,7 +334,7 @@ module.exports = app => ({
         info.push({text: '死亡', level: 2})
         return $helper.wrapResult(true, info)
       }
-      let dieUsername = checkAction.to
+      let dieUsername = killAction.to
       let diePlayer = await $service.baseService.queryOne(player, {gameId: gameInstance._id, roomId: gameInstance.roomId, username: dieUsername})
       let currentSkills = currentPlayer.skill
       let antidoteSkill
@@ -378,6 +374,17 @@ module.exports = app => ({
         info.push({text: $support.getPlayerFullName(poisonPlayer) , level: 2})
       }
       return $helper.wrapResult(true, info)
+    } else if (gameInstance.stage === 4 && currentPlayer.role === 'hunter') {
+      if(currentPlayer.status === 0){
+        let info = []
+        info.push({text: '你已', level: 1})
+        info.push({text: '出局', level: 2})
+        if(currentPlayer.outReason !== 'poison'){
+          info.push({text: '，你现在可以', level: 1})
+          info.push({text: '发动技能', level: 3})
+        }
+        return $helper.wrapResult(true, info)
+      }
     } else if (gameInstance.stage === 6){
       let voteAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId,day: gameInstance.day, stage: 6, from: currentPlayer.username, action: 'vote'})
       if(voteAction && voteAction.to){
@@ -394,17 +401,16 @@ module.exports = app => ({
 
   /**
    * 获取玩家在游戏中的动作状态
-   * @param id
    * @returns {Promise<{result}>}
    */
-  async getActionStatusInGame (id) {
+  async getActionStatusInGame (ctx, id) {
     const { $service, $helper, $model } = app
     const { game, player, action } = $model
     if(!id){
       return $helper.wrapResult(false, 'gameId为空！', -1)
     }
     let gameInstance = await $service.baseService.queryById(game, id)
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
     let useStatus = gameInstance.stage === 6 && currentPlayer.status === 1
     let voteAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 6, from: currentPlayer.username, action: 'vote'})
@@ -425,10 +431,9 @@ module.exports = app => ({
 
   /**
    * 获取游戏是否结束
-   * @param id
    * @returns {Promise<{result}>}
    */
-  async settleGameOver (id) {
+  async settleGameOver (ctx, id) {
     const { $service, $helper, $model } = app
     const { game, player, record } = $model
     if(!id){

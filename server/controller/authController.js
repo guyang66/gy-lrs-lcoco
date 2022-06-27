@@ -4,8 +4,8 @@ module.exports = app => ({
    * 登录
    * @returns {Promise<void>}
    */
-  async login () {
-    const { ctx, $helper, $service } = app;
+  async login (ctx) {
+    const { $helper, $service } = app;
     const { username, password } = ctx.request.body
 
     if(!username || username === '') {

@@ -4,8 +4,8 @@ module.exports = app => ({
    * 开始游戏
    * @returns {Promise<void>}
    */
-  async gameStart () {
-    const { ctx, $service, $helper, $model, $constants, $support,$ws } = app
+  async gameStart (ctx) {
+    const { $service, $helper, $model, $constants, $support,$ws } = app
     const { room, game, player, vision, record } = $model
     const { gameModeMap, skillMap } = $constants
     const { id } = ctx.query
@@ -14,7 +14,7 @@ module.exports = app => ({
       return
     }
     let roomInstance = await $service.baseService.queryById(room, id)
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     if(currentUser.defaultRole !== 'host'){
       ctx.body = $helper.Result.fail(-1,'只有房主角色才能开始游戏')
       return
@@ -69,10 +69,12 @@ module.exports = app => ({
     let randomPlayers = $helper.getRandomNumberArray(1, playerCount, playerCount, standard9RoleArray)
     for(let i =0; i < randomPlayers.length; i ++ ){
       let item = randomPlayers[i]
+      let randomPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: roomInstance['v' + (item.number)]})
       let p = {
         roomId: roomInstance._id,
         gameId: gameInstance._id,
         username: roomInstance['v' + (item.number)],
+        name: randomPlayer.name,
         role: item.role,
         camp: item.role === 'wolf' ? 0 : 1, // 狼人阵营 ：0 ； 好人阵营：1
         status: 1, // 都是存活状态
@@ -131,8 +133,8 @@ module.exports = app => ({
    * 根据user获取游戏信息
    * @returns {Promise<void>}
    */
-  async getGameInfo () {
-    const { ctx, $service, $helper, $model, $constants } = app
+  async getGameInfo (ctx) {
+    const { $service, $helper, $model, $constants } = app
     const { game, player} = $model
     const { playerRoleMap, stageMap } = $constants
     const { id } = ctx.query
@@ -149,7 +151,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'该游戏已结束！')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
     if(!currentPlayer){
@@ -158,35 +160,35 @@ module.exports = app => ({
     }
 
     // 获取当前角色拥有的各个玩家的游戏信息
-    let playerInfoResult = await $service.gameService.getPlayerInfoInGame(gameInstance._id)
+    let playerInfoResult = await $service.gameService.getPlayerInfoInGame(ctx, gameInstance._id)
     if(!playerInfoResult.result){
       ctx.body = $helper.Result.fail(playerInfoResult.errorCode, playerInfoResult.errorMessage)
       return
     }
 
     // 获取当前玩家的技能状态
-    let skillInfo = await $service.gameService.getSkillStatusInGame(gameInstance._id)
+    let skillInfo = await $service.gameService.getSkillStatusInGame(ctx, gameInstance._id)
     if(!skillInfo.result){
       ctx.body = $helper.Result.fail(skillInfo.errorCode, skillInfo.errorMessage)
       return
     }
 
     // 获取游戏公共信息
-    let broadcastInfo = await $service.gameService.getBroadcastInfo(gameInstance._id)
+    let broadcastInfo = await $service.gameService.getBroadcastInfo(ctx, gameInstance._id)
     if(!broadcastInfo.result){
       ctx.body = $helper.Result.fail(broadcastInfo.errorCode, broadcastInfo.errorMessage)
       return
     }
 
     // 获取玩家的系统提示信息
-    let systemTipsInfo = await $service.gameService.getSystemTips(gameInstance._id)
+    let systemTipsInfo = await $service.gameService.getSystemTips(ctx, gameInstance._id)
     if(!systemTipsInfo.result){
       ctx.body = $helper.Result.fail(systemTipsInfo.errorCode, systemTipsInfo.errorMessage)
       return
     }
 
     // 获取玩家的非角色技能状态（如投票）
-    let actionInfo = await $service.gameService.getActionStatusInGame(gameInstance._id)
+    let actionInfo = await $service.gameService.getActionStatusInGame(ctx, gameInstance._id)
     if(!actionInfo.result){
       ctx.body = $helper.Result.fail(actionInfo.errorCode, actionInfo.errorMessage)
       return
@@ -225,8 +227,8 @@ module.exports = app => ({
    * ctx.query.role不存在的话，表示房主强制进行下一阶段
    * @returns {Promise<void>}
    */
-  async nextStage () {
-    const { ctx, $service, $helper, $model, $support, $ws } = app
+  async nextStage (ctx) {
+    const { $service, $helper, $model, $support, $ws } = app
     const { game, player, record, action, gameTag } = $model
     const { roomId, gameId, role } = ctx.query
     if(!roomId || roomId === ''){
@@ -237,7 +239,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameId, username: currentUser.username})
     if(!currentPlayer){
       ctx.body = $helper.Result.fail(-1,'未查询到你在该游戏中！')
@@ -303,7 +305,7 @@ module.exports = app => ({
         ctx.body = $helper.Result.fail(settleResult.errorCode, settleResult.errorMessage)
         return
       }
-      await $service.gameService.settleGameOver(gameInstance._id)
+      await $service.gameService.settleGameOver(ctx, gameInstance._id)
     } else if (stage === 4) {
       // 天亮 => 发言环节
       let alivePlayer = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1})
@@ -501,9 +503,9 @@ module.exports = app => ({
    * 获取游戏公共事件记录
    * @returns {Promise<void>}
    */
-  async commonGameRecord () {
-    const { ctx, $service, $helper, $model, $ws } = app
-    const { room, user, game, player, vision, record } = $model
+  async commonGameRecord (ctx) {
+    const { $service, $helper, $model} = app
+    const { game, record } = $model
     const { roomId, gameId } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -550,9 +552,9 @@ module.exports = app => ({
    * 查验玩家
    * @returns {Promise<void>}
    */
-  async checkPlayer () {
-    const { ctx, $service, $helper, $model, $ws } = app
-    const { room, user, game, player, vision, record, action } = $model
+  async checkPlayer (ctx) {
+    const { $service, $helper, $model, $ws } = app
+    const { game, player, vision, record, action } = $model
     const { roomId, gameId, username } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -580,7 +582,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏已经结束！' + winnerString)
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: currentUser.username})
     if(!currentPlayer){
@@ -672,9 +674,9 @@ module.exports = app => ({
    * 狼人袭击玩家
    * @returns {Promise<void>}
    */
-  async assaultPlayer () {
-    const { ctx, $service, $helper, $model, $ws } = app
-    const { room, user, game, player, vision, record, action } = $model
+  async assaultPlayer (ctx) {
+    const { $service, $helper, $model } = app
+    const { game, player, action } = $model
     const { roomId, gameId, username } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -702,7 +704,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏已经结束！' + winnerString)
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: currentUser.username})
     if(!currentPlayer){
@@ -767,10 +769,10 @@ module.exports = app => ({
     ctx.body = $helper.Result.success(r)
   },
 
-  async antidotePlayer () {
-    const { ctx, $service, $helper, $model, $ws } = app
-    const { room, user, game, player, vision, record, action } = $model
-    const { roomId, gameId, username } = ctx.query
+  async antidotePlayer (ctx) {
+    const { $service, $helper, $model } = app
+    const { game, player, record, action } = $model
+    const { roomId, gameId } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
       return
@@ -793,7 +795,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏已经结束！' + winnerString)
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: currentUser.username})
     if(!currentPlayer){
@@ -882,9 +884,9 @@ module.exports = app => ({
    * 投票
    * @returns {Promise<void>}
    */
-  async votePlayer () {
-    const { ctx, $service, $helper, $model, $ws } = app
-    const { room, user, game, player, vision, record, action } = $model
+  async votePlayer (ctx) {
+    const { $service, $helper, $model } = app
+    const { game, player, action } = $model
     const { roomId, gameId, username } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -916,7 +918,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'该阶段不能进行投票操作')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: currentUser.username})
     if(!currentPlayer){
@@ -952,9 +954,9 @@ module.exports = app => ({
    * 拥堵
    * @returns {Promise<void>}
    */
-  async poisonPlayer () {
-    const { ctx, $service, $helper, $model, $ws } = app
-    const { room, user, game, player, vision, record, action, gameTag } = $model
+  async poisonPlayer (ctx) {
+    const { $service, $helper, $model } = app
+    const { game, player, action } = $model
     const { roomId, gameId, username } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -986,7 +988,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'该阶段不能进行毒药操作')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: currentUser.username})
     if(!currentPlayer){

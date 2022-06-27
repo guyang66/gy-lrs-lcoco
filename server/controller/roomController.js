@@ -3,15 +3,15 @@ module.exports = app => ({
    * 创建房间
    * @returns {Promise<void>}
    */
-  async createRoom () {
-    const { ctx, $service, $helper, $model } = app
+  async createRoom (ctx) {
+    const { $service, $helper, $model } = app
     const { room } = $model
     const { roomName } = ctx.query
     if(!roomName || roomName === ''){
       ctx.body = $helper.Result.fail(-1,'房间名字不能为空！')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let password = $helper.getRandomCode()
     let obj = {
       name: roomName,
@@ -32,8 +32,8 @@ module.exports = app => ({
    * 获取房间信息
    * @returns {Promise<void>}
    */
-  async getRoomInfo () {
-    const { ctx, $service, $helper, $model, $support } = app
+  async getRoomInfo (ctx) {
+    const { $service, $helper, $model } = app
     const { room, user } = $model
     const { id } = ctx.query
     if(!id || id === ''){
@@ -45,7 +45,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1, '房间不存在！')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let username = currentUser.username
     let waitPlayer = roomInstance.wait
 
@@ -106,8 +106,8 @@ module.exports = app => ({
    * 加入房间
    * @returns {Promise<void>}
    */
-  async joinRoom () {
-    const {ctx, $service, $helper, $model, $ws } = app
+  async joinRoom (ctx) {
+    const { $service, $helper, $model, $ws } = app
     const { room} = $model
     const { key } = ctx.query
     if(!key || key === ''){
@@ -120,7 +120,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'房间不存在或密码不对！')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let username = currentUser.username
 
     // 查看当前用户是否在座位上
@@ -172,7 +172,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'username不能为空！')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     if(currentUser.username !== username){
       ctx.body = $helper.Result.fail(-1,'你不能操作别人账号退出房间！')
       return
@@ -221,8 +221,8 @@ module.exports = app => ({
    * 在房间内修改昵称（需要通知到别人）
    * @returns {Promise<void>}
    */
-  async modifyPlayerNameInRoom () {
-    const { ctx, $service, $helper, $model, $ws } = app
+  async modifyPlayerNameInRoom (ctx) {
+    const { $service, $helper, $model, $ws } = app
     const { user } = $model
     const { id, name } = ctx.query
     if(!id || id === ''){
@@ -233,7 +233,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'新昵称不能为空！')
       return
     }
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let targetUser = await $service.baseService.queryById(user, id)
     if(currentUser.username !== targetUser.username){
       ctx.body = $helper.Result.fail(-1,'你不能修改别人的信息')
@@ -250,8 +250,8 @@ module.exports = app => ({
    * 房主踢人
    * @returns {Promise<void>}
    */
-  async kickPlayer () {
-    const { ctx, $service, $helper, $model, $ws } = app
+  async kickPlayer (ctx) {
+    const { $service, $helper, $model, $ws } = app
     const { room } = $model
     const { id, position } = ctx.query
     if(!id || id === ''){
@@ -264,7 +264,7 @@ module.exports = app => ({
     }
     //todo: 该房间是该房主创建才能t人
     let roomInstance = await $service.baseService.queryById(room, id)
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     if(roomInstance.owner !== currentUser.username){
       ctx.body = $helper.Result.fail(-1,'你不是该房间的房主，无法踢人！')
       return
@@ -282,8 +282,8 @@ module.exports = app => ({
    * 玩家入座
    * @returns {Promise<void>}
    */
-  async sitDown () {
-    const { ctx, $service, $helper, $model, $ws } = app
+  async sitDown (ctx) {
+    const { $service, $helper, $model, $ws } = app
     const { room } = $model
     const { id, position } = ctx.query
     if(!id || id === ''){
@@ -295,7 +295,7 @@ module.exports = app => ({
       return
     }
     let roomInstance = await $service.baseService.queryById(room, id)
-    let currentUser = await $service.baseService.userInfo()
+    let currentUser = await $service.baseService.userInfo(ctx)
     let username = currentUser.username
     let seatValue = roomInstance['v' + position]
     if(seatValue === username){

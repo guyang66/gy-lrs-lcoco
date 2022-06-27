@@ -4,9 +4,9 @@ module.exports = app => ({
    * 创建用户
    * @returns {Promise<void>}
    */
-  async createUser() {
+  async createUser(ctx) {
     //todo: url权限要跟上
-    const { ctx, $service, $helper, $model } = app
+    const {  $service, $helper, $model } = app
     const { user } = $model
     const { username, name, password, role } = ctx.request.body
     if(!username || username === ''){
@@ -53,8 +53,8 @@ module.exports = app => ({
    * 通过token获取用户信息
    * @returns {Promise<void>}
    */
-  async getUserInfo () {
-    const { ctx, $service, $helper } = app
+  async getUserInfo (ctx) {
+    const { $service, $helper } = app
     const token = ctx.header.authorization
     let user;
     try {

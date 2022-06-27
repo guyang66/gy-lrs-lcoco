@@ -205,8 +205,8 @@ module.exports = app => ({
     }
   },
 
-  async userInfo () {
-    const { ctx, $service, $helper } = app
+  async userInfo (ctx) {
+    const { $service, $helper } = app
     const token = ctx.header.authorization
     let user;
     try {
