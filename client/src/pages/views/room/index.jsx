@@ -13,8 +13,8 @@ const Index = (props) => {
   const {appStore, history} = props;
   const {user} = appStore
 
-  let roomId =  location.state && location.state.id
-  roomId = '62b05fb40411e736291ec36b'
+  let roomId =  history.location.state && history.location.state.id
+  // roomId = '62b9b42096a4fa9a81de4475'
 
   const [roomDetail, setRoomDetail] = useState({})
   const [gameDetail, setGameDetail] = useState({})
@@ -51,6 +51,12 @@ const Index = (props) => {
   const [poisonModal, setPoisonModal] = useState(false)
   const [poisonPlayer, setPoisonPlayer] = useState([])
   const [poisonResult, setPoisonResult] = useState(null)
+
+  const [shootModal, setShootModal] = useState(false)
+  const [shootPlayer, setShootPlayer] = useState([])
+  const [shootResult, setShootResult] = useState(null)
+
+  const [socketOn,setSocketOn] = useState(true)
 
   useEffect(()=>{
     getRoomDetail()
@@ -163,8 +169,15 @@ const Index = (props) => {
   }
 
   const quitRoom = () => {
+    if(!roomId){
+      history.push({pathname: '/index'})
+      return
+    }
+    setSocketOn(false)
     apiConfig.quitRoom({id: roomId, username: user.username}).then(data=>{
       history.push({pathname: '/index'})
+    }).catch(()=>{
+      setSocketOn(true)
     })
   }
 
@@ -284,6 +297,28 @@ const Index = (props) => {
       })
       setPoisonPlayer(tmp)
       setPoisonModal(true)
+    } else if (key === 'shoot') {
+      // 开枪
+      let tmp = []
+      playerInfo.forEach(item=>{
+        let canCheck = true
+        if(item.status === 0){
+          // 不能对死人开枪
+          canCheck = false
+        }
+        tmp.push({...item, check: canCheck, isTarget: false})
+      })
+      setShootPlayer(tmp)
+      setShootModal(true)
+    } else if (key === 'boom'){
+      confirm(
+        {
+          title: '确定要自爆吗（自爆之后直接进入天黑）？',
+          onOk() {
+            boomAction()
+          }
+        }
+      )
     }
   }
 
@@ -296,6 +331,16 @@ const Index = (props) => {
         }
       }
     )
+  }
+
+  const boomAction = () => {
+    if(currentRole.role !== 'wolf'){
+      message.warn('你不是狼人，不能进行自爆操作！')
+      return
+    }
+    apiConfig.boomAction({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+      message.success('自爆成功')
+    })
   }
 
   const assaultPlayerAction = (item) => {
@@ -407,6 +452,42 @@ const Index = (props) => {
     )
   }
 
+  const shootPlayerAction = (item)=> {
+    confirm(
+      {
+        title: '确定要开枪带走该玩家吗？',
+        onOk() {
+          fetchShootPlayer(item)
+        }
+      }
+    )
+  }
+
+  const fetchShootPlayer = (item) => {
+    if(currentRole.role !== 'hunter'){
+      message.warn('你不是猎人，不能进行此操作！')
+      return
+    }
+    let username = item.username
+    apiConfig.shootPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
+      console.log(data)
+      setShootResult({...data, prompt: ''})
+      let newShootPlayer = JSON.parse(JSON.stringify(shootPlayer))
+      let tmp = []
+      newShootPlayer.forEach(item=>{
+        if(item.username === data.username){
+          let obj = {...item, camp: data.camp, campName: data.campName, isTarget: true}
+          tmp.push(obj)
+        } else {
+          tmp.push(item)
+        }
+      })
+      setShootPlayer(tmp)
+      //刷新
+      initGame(gameDetail._id, gameDetail.roomId)
+    })
+  }
+
   const fetchPoisonPlayer = (item) => {
     if(currentRole.role !== 'witch'){
       message.warn('你不是女巫，不能进行此操作！')
@@ -454,7 +535,9 @@ const Index = (props) => {
     // todo: 返回 action、username，同一个人则不处理消息
     // todo: ws url有跨域问题
     if(msg === 'refreshRoom'){
-      getRoomDetail()
+      if(socketOn){
+        getRoomDetail()
+      }
     } else if (msg === 'refreshGame') {
       initGame(gameDetail._id, roomDetail._id)
     }
@@ -1291,6 +1374,102 @@ const Index = (props) => {
               <div className="prompt-view mar-l20 mar-r20 mar-t10">
                 {
                   poisonResult.prompt
+                }
+              </div>
+            ) : null
+          }
+        </div>
+      </Modal>
+
+
+      <Modal
+        title="开枪"
+        centered
+        className="modal-view-wrap player-click-modal"
+        maskClosable={false}
+        maskStyle={{
+          backgroundColor: 'rgba(0,0,0,0.1)',
+        }}
+        visible={shootModal}
+        onOk={()=>{
+          userNextStage(gameDetail, currentRole)
+        }}
+        okText="下一阶段"
+        cancelText="取消"
+        onCancel={() => {
+          setShootPlayer([])
+          setShootModal(false)
+        }}
+      >
+        <div className="content-wrap">
+          <div className="content-view">
+            {
+              shootPlayer.map(item=>{
+                return (
+                  <div
+                    className={cls({
+                      'player-cell FBV FBAC FBJC': true,
+                      'check-item': item.check && !item.isTarget,
+                      'normal-item': !item.check && !item.isTarget,
+                      'target-item': item.isTarget
+                    })}
+                    key={item.position}>
+                    <div  className={cls({
+                      'txt': true,
+                      'check-text': item.check,
+                      'normal-text': !item.check,
+                      'mar-t20': !item.check || item.isTarget
+                    })}>
+                      {item.position + '号玩家' + (item.isSelf ? '(我)' : '')}
+                    </div>
+                    <div className={cls({
+                      'txt': true,
+                      'check-text': item.check,
+                      'normal-text': !item.check
+                    })}>
+                      {item.name}
+                    </div>
+                    {
+                      (item.check && !item.isTarget) ? (<Button size="small"
+                                                                onClick={()=>{shootPlayerAction(item)}}
+                                                                className="btn-warning">
+                        开枪
+                      </Button>) : null
+                    }
+                    {
+                      (item.camp !== null && item.camp !== undefined) ? (
+                        <div className={cls({
+                          'camp-tag': true,
+                          'camp-tag-good': item.camp === 1,
+                          'camp-tag-wolf': item.camp !== 1
+                        })}>
+                          {item.roleName}
+                        </div>
+                      ) : null
+                    }
+                  </div>
+                )
+              })
+            }
+          </div>
+          {
+            shootResult ? (
+              <div className="result-view FBH FBAC mar-t10 mar-l20 mar-r20">
+                <div className="tit w-70">开枪结果：</div>
+                <div className="content">
+                  <div>
+                    <span>{'你开枪带走了'}</span>
+                    <span className="color-red">{shootResult.position + '号玩家（' + shootResult.name + ')。'}</span>
+                  </div>
+                </div>
+              </div>
+            ) : null
+          }
+          {
+            shootResult ? (
+              <div className="prompt-view mar-l20 mar-r20 mar-t10">
+                {
+                  shootResult.prompt
                 }
               </div>
             ) : null

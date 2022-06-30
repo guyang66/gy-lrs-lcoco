@@ -6,7 +6,7 @@ module.exports = app => ({
    */
   async gameStart (ctx) {
     const { $service, $helper, $model, $constants, $support,$ws } = app
-    const { room, game, player, vision, record } = $model
+    const { room, game, user, player, vision, record } = $model
     const { gameModeMap, skillMap } = $constants
     const { id } = ctx.query
     if(!id || id === ''){
@@ -69,12 +69,12 @@ module.exports = app => ({
     let randomPlayers = $helper.getRandomNumberArray(1, playerCount, playerCount, standard9RoleArray)
     for(let i =0; i < randomPlayers.length; i ++ ){
       let item = randomPlayers[i]
-      let randomPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: roomInstance['v' + (item.number)]})
+      let randomUser = await $service.baseService.queryOne(user,  {username: roomInstance['v' + (item.number)]})
       let p = {
         roomId: roomInstance._id,
         gameId: gameInstance._id,
         username: roomInstance['v' + (item.number)],
-        name: randomPlayer.name,
+        name: randomUser.name,
         role: item.role,
         camp: item.role === 'wolf' ? 0 : 1, // 狼人阵营 ：0 ； 好人阵营：1
         status: 1, // 都是存活状态
@@ -147,10 +147,10 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'该游戏不存在！')
       return
     }
-    if(gameInstance.status === 2){
-      ctx.body = $helper.Result.fail(-1,'该游戏已结束！')
-      return
-    }
+    // if(gameInstance.status === 2){
+    //   ctx.body = $helper.Result.fail(-1,'该游戏已结束！')
+    //   return
+    // }
     let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
@@ -299,7 +299,7 @@ module.exports = app => ({
         return
       }
     } else if(stage === 3){
-      // 结算女巫的操作果
+      // 结算女巫的操作结果
       let settleResult = await $service.stageService.witchStage(gameInstance._id)
       if(!settleResult.result){
         ctx.body = $helper.Result.fail(settleResult.errorCode, settleResult.errorMessage)
@@ -309,7 +309,7 @@ module.exports = app => ({
     } else if (stage === 4) {
       // 天亮 => 发言环节
       let alivePlayer = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1})
-      let randomPosition = Math.floor(Math.random() * alivePlayer.length ) + 1
+      let randomPosition = Math.floor(Math.random() * alivePlayer.length )
       let randomOrder = Math.floor(Math.random() * 2 ) + 1 // 1到2的随机数
       let targetPlayer = alivePlayer[randomPosition]
       let tagObject = {
@@ -436,6 +436,25 @@ module.exports = app => ({
           }
           await $service.baseService.save(gameTag, tagObject)
           await $service.baseService.updateById(player, votePlayer._id,{status: 0, outReason: 'vote'})
+          if(votePlayer.role === 'hunter'){
+            // 修改猎人的技能状态
+            let skills = votePlayer.skill
+            let newSkillStatus = []
+            skills.forEach(item=>{
+              if(item.key === 'shoot'){
+                newSkillStatus.push({
+                  name: item.name,
+                  key: item.key,
+                  status: 1
+                })
+              } else {
+                newSkillStatus.push(item)
+              }
+            })
+            await $service.baseService.updateById(player, votePlayer._id, {
+              skill: newSkillStatus
+            })
+          }
         } else {
           let recordObject = {
             roomId: gameInstance.roomId,
@@ -770,7 +789,7 @@ module.exports = app => ({
   },
 
   async antidotePlayer (ctx) {
-    const { $service, $helper, $model } = app
+    const { $service, $helper, $model, $support } = app
     const { game, player, record, action } = $model
     const { roomId, gameId } = ctx.query
     if(!roomId || roomId === ''){
@@ -847,8 +866,7 @@ module.exports = app => ({
       action: 'antidote',
     }
     await $service.baseService.save(action, actionObject)
-    let diePlayer = $service.baseService.queryOne(player,{roomId: roomId, gameId: gameInstance._id, username: killTarget})
-
+    let diePlayer = await $service.baseService.queryOne(player,{roomId: roomId, gameId: gameInstance._id, username: killTarget})
     let recordObject = {
       roomId: roomId,
       gameId: gameInstance._id,
@@ -857,7 +875,7 @@ module.exports = app => ({
       view: [],
       isCommon: 0,
       isTitle: 0,
-      content: '女巫——' + currentPlayer.position + '号玩家（' + currentPlayer.name +  '）' + '使用解药救了：' +  diePlayer.position + '号玩家（' +diePlayer.name + '）'
+      content: '女巫——' + $support.getPlayerFullName(currentPlayer) + '使用解药救了：' +   $support.getPlayerFullName(diePlayer)
     }
     await $service.baseService.save(record, recordObject)
 
@@ -951,7 +969,7 @@ module.exports = app => ({
   },
 
   /**
-   * 拥堵
+   * 撒毒
    * @returns {Promise<void>}
    */
   async poisonPlayer (ctx) {
@@ -1052,6 +1070,218 @@ module.exports = app => ({
     })
     ctx.body = $helper.Result.success(r)
 
+  },
+
+  /**
+   * 开枪
+   * @param ctx
+   * @returns {Promise<void>}
+   */
+  async shootPlayer (ctx) {
+    const { $service, $helper, $model, $support, $ws } = app
+    const { game, player, action, gameTag, record } = $model
+    const { roomId, gameId, username } = ctx.query
+    if(!roomId || roomId === ''){
+      ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
+      return
+    }
+    if(!gameId || gameId === ''){
+      ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
+      return
+    }
+    if(!username || username === ''){
+      ctx.body = $helper.Result.fail(-1,'username不能为空！')
+      return
+    }
+    let gameInstance = await $service.baseService.queryById(game, gameId)
+    if(!gameInstance){
+      ctx.body = $helper.Result.fail(-1,'游戏不存在！')
+      return
+    }
+    if(gameInstance.status !== 1){
+      let winner
+      if(gameInstance.winner !== null && gameInstance.winner !== undefined){
+        winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
+      }
+      let winnerString = winner ? '胜利者为：' + winner : null
+      ctx.body = $helper.Result.fail(-1,'游戏已经结束！' + winnerString)
+      return
+    }
+    if(gameInstance.stage !== 4 && gameInstance.stage !== 7) {
+      console.log(gameInstance.stage)
+      ctx.body = $helper.Result.fail(-1,'该阶段不能进行开枪操作')
+      return
+    }
+    let currentUser = await $service.baseService.userInfo(ctx)
+    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: {"$in": [4,7]}, action: 'shoot'})
+    if(exist){
+      ctx.body = $helper.Result.fail(-1,'今天你已使用过开枪功能！')
+      return
+    }
+    // 查询你在游戏中的状态
+    let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: currentUser.username})
+    if(!currentPlayer){
+      ctx.body = $helper.Result.fail(-1,'未查询到你在该游戏中')
+      return
+    }
+    if(currentPlayer.role !== 'hunter'){
+      ctx.body = $helper.Result.fail(-1,'您在游戏中的角色不是猎人，无法使用该技能！')
+      return
+    }
+
+    let targetPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: username})
+    if(targetPlayer.status === 0){
+      ctx.body = $helper.Result.fail(-1,'该玩家已出局！')
+      return
+    }
+
+    let actionObject = {
+      roomId: roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      from: currentPlayer.username,
+      to: targetPlayer.username,
+      action: 'shoot',
+    }
+    await $service.baseService.save(action, actionObject)
+
+    let r = {
+      username: targetPlayer.username,
+      name: targetPlayer.name,
+      position: targetPlayer.position,
+    }
+
+    let recordObject = {
+      roomId: gameInstance.roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      view: [],
+      isCommon: 1,
+      isTitle: 0,
+      content: '猎人——' + $support.getPlayerFullName(currentPlayer) + '发动技能，开枪带走了'  + $support.getPlayerFullName(targetPlayer)
+    }
+    await $service.baseService.save(record, recordObject)
+
+    // 注册另一个玩家死亡
+    let tagObject = {
+      roomId: gameInstance.roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      dayStatus: gameInstance.stage < 4 ? 1 : 2,
+      desc: 'shoot',
+      mode: 1,
+      target: targetPlayer.username,
+      name: targetPlayer.name,
+      position: targetPlayer.position
+    }
+    await $service.baseService.save(gameTag, tagObject)
+    await $service.baseService.updateById(player, targetPlayer._id,{status: 0, outReason: 'shoot'})
+    await $service.gameService.settleGameOver(ctx, gameInstance._id)
+
+    $ws.connections.forEach(function (conn) {
+      conn.sendText('refreshGame')
+    })
+    ctx.body = $helper.Result.success(r)
+  },
+
+  /**
+   * 狼人自爆
+   * @param ctx
+   * @returns {Promise<void>}
+   */
+  async boomPlayer (ctx) {
+    const { $service, $helper, $model, $support, $ws } = app
+    const { game, player, action, gameTag, record } = $model
+    const { roomId, gameId } = ctx.query
+    if(!roomId || roomId === ''){
+      ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
+      return
+    }
+    if(!gameId || gameId === ''){
+      ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
+      return
+    }
+    let gameInstance = await $service.baseService.queryById(game, gameId)
+    if(!gameInstance){
+      ctx.body = $helper.Result.fail(-1,'游戏不存在！')
+      return
+    }
+    if(gameInstance.status !== 1){
+      let winner
+      if(gameInstance.winner !== null && gameInstance.winner !== undefined){
+        winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
+      }
+      let winnerString = winner ? '胜利者为：' + winner : null
+      ctx.body = $helper.Result.fail(-1,'游戏已经结束！' + winnerString)
+      return
+    }
+    if(gameInstance.stage !== 5 ) {
+      console.log(gameInstance.stage)
+      ctx.body = $helper.Result.fail(-1,'该阶段不能进行开枪操作')
+      return
+    }
+    let currentUser = await $service.baseService.userInfo(ctx)
+    // 查询你在游戏中的状态
+    let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: currentUser.username})
+    if(!currentPlayer){
+      ctx.body = $helper.Result.fail(-1,'未查询到你在该游戏中')
+      return
+    }
+    if(currentPlayer.role !== 'wolf'){
+      ctx.body = $helper.Result.fail(-1,'您在游戏中的角色不是狼人，不能使用自爆技能！')
+      return
+    }
+
+    let actionObject = {
+      roomId: roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: currentPlayer.stage,
+      from: currentPlayer.username,
+      to: currentPlayer.username,
+      action: 'boom',
+    }
+    await $service.baseService.save(action, actionObject)
+
+    let recordObject = {
+      roomId: gameInstance.roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      view: [],
+      isCommon: 1,
+      isTitle: 0,
+      content:  $support.getPlayerFullName(currentPlayer) + '自爆！'
+    }
+    await $service.baseService.save(record, recordObject)
+    // 注册死亡
+    let tagObject = {
+      roomId: gameInstance.roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      dayStatus: gameInstance.stage < 4 ? 1 : 2,
+      desc: 'boom',
+      mode: 1,
+      target: currentPlayer.username,
+      name: currentPlayer.name,
+      position: currentPlayer.position
+    }
+    await $service.baseService.save(gameTag, tagObject)
+    await $service.baseService.updateById(player, currentPlayer._id,{status: 0, outReason: 'boom'})
+    // 判断游戏结束没有 todo: 游戏结束还有后续流程没走完
+    await $service.gameService.settleGameOver(ctx, gameInstance._id)
+
+    // 修改阶段
+    let update = {stage: 0, day: gameInstance.day + 1}
+    await $service.baseService.updateById(game, gameInstance._id, update)
+    $ws.connections.forEach(function (conn) {
+      conn.sendText('refreshGame')
+    })
+    ctx.body = $helper.Result.success(true)
   }
 
 })

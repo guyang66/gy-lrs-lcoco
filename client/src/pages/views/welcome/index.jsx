@@ -79,7 +79,7 @@ const Index = (props) => {
       message.success('加入房间成功！')
       setJoinRoomModal(false)
       setRoomKey(null)
-      history.push({pathname: '/room', state: {id: data._id}})
+      history.push({pathname: '/room', state: {id: data}})
     })
   }
 

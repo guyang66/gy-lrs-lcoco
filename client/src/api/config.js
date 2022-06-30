@@ -154,6 +154,22 @@ export default {
       method: 'get',
       params,
     })
+  },
+
+  shootPlayerRole (params) {
+    return fetch({
+      url: urlPrefix + 'game/shootPlayer/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  boomAction (params) {
+    return fetch({
+      url: urlPrefix + 'game/boomPlayer/auth',
+      method: 'get',
+      params,
+    })
   }
 
 }

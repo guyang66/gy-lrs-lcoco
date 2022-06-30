@@ -95,7 +95,26 @@ module.exports = app => ({
         await $service.baseService.save(gameTag, tagObject)
         // 注册该玩家的死亡
         await $service.baseService.updateOne(player,{ roomId: gameInstance.roomId, gameId: gameInstance._id, username: killPlayer.username}, { status: 0 , outReason: 'assault'})
-        return $helper.wrapResult(true, '')
+        // todo: 不是毒杀的就可以给技能了，取消用 desc = poison去判断，麻烦
+        if(killPlayer.role === 'hunter'){
+          // 修改它的技能状态
+          let skills = killPlayer.skill
+          let newSkillStatus = []
+          skills.forEach(item=>{
+            if(item.key === 'shoot'){
+              newSkillStatus.push({
+                name: item.name,
+                key: item.key,
+                status: 1
+              })
+            } else {
+              newSkillStatus.push(item)
+            }
+          })
+          await $service.baseService.updateById(player, killPlayer._id, {
+            skill: newSkillStatus
+          })
+        }
       }
       // 女巫救人，在女巫使用技能时结算。
     }
@@ -136,7 +155,9 @@ module.exports = app => ({
     }
 
     // 结算所有的死亡玩家
-    let diePlayerList = await $service.baseService.query(gameTag,{roomId: roomId, gameId: gameInstance._id, day: gameInstance.day, stage:{ $in: [2, 3]}, mode: 1})
+    let diePlayerList = await $service.baseService.query(gameTag,{roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage:{ $in: [2, 3]}, mode: 1})
+    console.log('进来')
+    console.log(diePlayerList)
     if(!diePlayerList || diePlayerList.length < 1){
       let peaceRecord = {
         roomId: gameInstance.roomId,

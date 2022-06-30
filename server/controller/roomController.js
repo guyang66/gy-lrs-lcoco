@@ -125,9 +125,9 @@ module.exports = app => ({
 
     // 查看当前用户是否在座位上
     let isSeat = await $service.roomService.findInSeatPlayer(roomInstance._id, username)
-    if(isSeat.result && roomInstance.gameId) {
+    if(isSeat.result) {
       // 在座位上且游戏在进行中，则回复游戏状态即可。
-      ctx.body = $helper.Result.success('ok')
+      ctx.body = $helper.Result.success(roomInstance._id)
       return
     }
 
@@ -153,7 +153,7 @@ module.exports = app => ({
       conn.sendText('refreshRoom')
     })
 
-    ctx.body = $helper.Result.success('加入房间成功')
+    ctx.body = $helper.Result.success(roomInstance._id)
   },
 
   /**

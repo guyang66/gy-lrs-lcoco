@@ -125,7 +125,7 @@ module.exports = app => ({
         })
       } else if (item.key === 'shoot') {
         const computeHunterSkill = (stage) => {
-          if(item.status !== 0){
+          if(item.status !== 1){
             return false
           }
           if(stage === 4 && currentPlayer.status === 0){
@@ -138,7 +138,7 @@ module.exports = app => ({
           key: item.key,
           name: item.name,
           canUse: computeHunterSkill(gameInstance.stage), // 猎人晚上不死于毒药可开枪, 被投出去可开枪
-          show: true , // 是否展示在前端
+          show: (gameInstance.stage === 4 || gameInstance.stage === 7) && item.status === 1, // 是否展示在前端
         })
       }
     })
@@ -323,7 +323,7 @@ module.exports = app => ({
       let info = []
       info.push({text: '你们', level: 1})
       info.push({text: '狼人', level: 2})
-      info.push({text: '晚上杀死了', level: 1})
+      info.push({text: '晚上袭击了', level: 1})
       info.push({text: $support.getPlayerFullName(killPlayer), level: 3})
       return $helper.wrapResult(true, info)
     } else if ((gameInstance.stage === 3) && currentPlayer.role === 'witch') {
@@ -364,7 +364,7 @@ module.exports = app => ({
         info.push({text: '，你使用了', level: 1})
         info.push({text: '解药', level: 3})
         info.push({text: '救了', level: 1})
-        info.push({text: $support.getPlayerFullName(saveAction) , level: 3})
+        info.push({text: $support.getPlayerFullName(savePlayer) , level: 3})
       }
       let poisonAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 3, action: 'poison'})
       if(poisonAction){

@@ -30,5 +30,7 @@ module.exports = app => {
   router.get('/api/game/antidotePlayer/auth', $middleware.auth, $controller.gameController.antidotePlayer)
   router.get('/api/game/votePlayer/auth', $middleware.auth, $controller.gameController.votePlayer)
   router.get('/api/game/poisonPlayer/auth', $middleware.auth, $controller.gameController.poisonPlayer)
+  router.get('/api/game/shootPlayer/auth', $middleware.auth, $controller.gameController.shootPlayer)
+  router.get('/api/game/boomPlayer/auth', $middleware.auth, $controller.gameController.boomPlayer)
 
 }
