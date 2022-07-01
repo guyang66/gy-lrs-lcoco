@@ -156,8 +156,6 @@ module.exports = app => ({
 
     // 结算所有的死亡玩家
     let diePlayerList = await $service.baseService.query(gameTag,{roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage:{ $in: [2, 3]}, mode: 1})
-    console.log('进来')
-    console.log(diePlayerList)
     if(!diePlayerList || diePlayerList.length < 1){
       let peaceRecord = {
         roomId: gameInstance.roomId,

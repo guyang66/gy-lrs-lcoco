@@ -8,6 +8,9 @@ module.exports = app => {
   router.get('/api/user/getUserInfo/auth', $middleware.auth, $controller.userController.getUserInfo)
   router.post('/api/user/create/auth', $middleware.auth, $controller.userController.createUser)
 
+  router.get('/tt', $middleware.auth, $controller.configController.test)
+
+
   // 后台配置接口
   router.get('/api/route/auth',$middleware.auth, $controller.configController.getRoute)
   router.get('/api/permission/ui/auth',$middleware.auth, $controller.configController.getUiPermission)
@@ -23,6 +26,7 @@ module.exports = app => {
   router.get('/api/game/start/auth', $middleware.auth, $controller.gameController.gameStart)
   router.get('/api/game/info/auth', $middleware.auth, $controller.gameController.getGameInfo)
   router.get('/api/game/result/auth', $middleware.auth, $controller.gameController.gameResult)
+  router.get('/api/game/destroy/auth', $middleware.auth, $controller.gameController.gameDestroy)
 
   router.get('/api/game/nextStage/auth', $middleware.auth, $controller.gameController.nextStage)
   router.get('/api/game/userNextStage/auth', $middleware.auth, $controller.gameController.nextStage)

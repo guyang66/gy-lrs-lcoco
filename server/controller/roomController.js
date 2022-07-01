@@ -115,7 +115,7 @@ module.exports = app => ({
       return
     }
     // todo:缺少观战加入房间的逻辑
-    let roomInstance = await $service.baseService.queryOne(room,{password: key})
+    let roomInstance = await $service.baseService.queryOne(room,{password: key}, {} ,{sort: { createTime: -1 }})
     if(!roomInstance){
       ctx.body = $helper.Result.fail(-1,'房间不存在或密码不对！')
       return
@@ -150,7 +150,10 @@ module.exports = app => ({
 
     $ws.connections.forEach(function (conn) {
       // 前端刷新房间状态
-      conn.sendText('refreshRoom')
+      let url = '/lrs/' + roomInstance._id
+      if(conn.path === url){
+        conn.sendText('refreshRoom')
+      }
     })
 
     ctx.body = $helper.Result.success(roomInstance._id)
@@ -212,7 +215,10 @@ module.exports = app => ({
     }
     await $service.baseService.updateById(room, id, { wait: newWaitPlayer})
     $ws.connections.forEach(function (conn) {
-      conn.sendText('refreshRoom')
+      let url = '/lrs/' + roomInstance._id
+      if(conn.path === url){
+        conn.sendText('refreshRoom')
+      }
     })
     ctx.body = $helper.Result.success('退出房间成功')
   },
@@ -223,8 +229,8 @@ module.exports = app => ({
    */
   async modifyPlayerNameInRoom (ctx) {
     const { $service, $helper, $model, $ws } = app
-    const { user } = $model
-    const { id, name } = ctx.query
+    const { user, room } = $model
+    const { id, roomId, name } = ctx.query
     if(!id || id === ''){
       ctx.body = $helper.Result.fail(-1,'userId不能为空！')
       return
@@ -233,15 +239,20 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'新昵称不能为空！')
       return
     }
+    let roomInstance = await $service.baseService.queryById(room, roomId)
     let currentUser = await $service.baseService.userInfo(ctx)
     let targetUser = await $service.baseService.queryById(user, id)
     if(currentUser.username !== targetUser.username){
       ctx.body = $helper.Result.fail(-1,'你不能修改别人的信息')
       return
     }
+
     await $service.baseService.updateById(user, id, {name: name})
     $ws.connections.forEach(function (conn) {
-      conn.sendText('refreshRoom')
+      let url = '/lrs/' + roomInstance._id
+      if(conn.path === url){
+        conn.sendText('refreshRoom')
+      }
     })
     ctx.body = $helper.Result.success('修改成功')
   },
@@ -273,7 +284,10 @@ module.exports = app => ({
     updateObj['v' + position] = null
     await $service.baseService.updateById(room, id, updateObj)
     $ws.connections.forEach(function (conn) {
-      conn.sendText('refreshRoom')
+      let url = '/lrs/' + roomInstance._id
+      if(conn.path === url){
+        conn.sendText('refreshRoom')
+      }
     })
     ctx.body = $helper.Result.success('踢人成功！')
   },
@@ -352,7 +366,10 @@ module.exports = app => ({
     }
     await $service.baseService.updateById(room, id, { wait: newWaitPlayer})
     $ws.connections.forEach(function (conn) {
-      conn.sendText('refreshRoom')
+      let url = '/lrs/' + roomInstance._id
+      if(conn.path === url){
+        conn.sendText('refreshRoom')
+      }
     })
     ctx.body = $helper.Result.success('入座成功')
   },

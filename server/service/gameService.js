@@ -19,7 +19,7 @@ module.exports = app => ({
       let un = gameInstance['v' + (i + 1)]
       // 查询其他玩家信息
       let otherPlayer = await $service.baseService.queryOne(player, {username: un, gameId: id, roomId: gameInstance.roomId})
-      if(gameInstance.status === 2){
+      if(gameInstance.status === 2 || gameInstance.status === 3){
         // 如果游戏已经结束，则获取完全视野（复盘）
         playerInfo.push({
           name: otherPlayer.name,
@@ -76,6 +76,7 @@ module.exports = app => ({
     let assaultAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 2, from: currentPlayer.username, action: 'assault'})
     let saveAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 3, from: currentPlayer.username, action: 'antidote'})
     let poisonAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 3, from: currentPlayer.username, action: 'poison'})
+    let killAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, action: 'kill'})
     skill.forEach(item=>{
       if(item.key === 'boom'){
         // 自爆只有在发言阶段可用，且存活状态才可以使用
@@ -109,7 +110,25 @@ module.exports = app => ({
           canUse: useStatus , // 预言家查验，只要存活可一直使用
           show: gameInstance.stage === 1 && currentPlayer.status === 1 && item.status === 1, // (是否展示在前端)存活且轮到自己行动，所以预言家在狼人之前行动，避免刚好被刀（第一晚可报查验，之后用不用也无法开口了），导致当晚技能用不了
         })
-      } else if (item.key === 'antidote' || item.key === 'poison') {
+      } else if (item.key === 'antidote') {
+        let useStatus = gameInstance.stage === 3 && item.status === 1 && currentPlayer.status === 1
+        if(saveAction){
+          useStatus = false
+        }
+        if(poisonAction){
+          useStatus = false
+        }
+        if(gameInstance.day !== 1 && killAction.to === currentPlayer.username){
+          // 首页之后不能自救
+          useStatus = false
+        }
+        tmp.push({
+          key: item.key,
+          name: item.name,
+          canUse: useStatus,
+          show: gameInstance.stage === 3 && currentPlayer.status === 1, // (是否展示在前端)存活且轮到自己行动
+        })
+      } else if (item.key === 'poison') {
         let useStatus = gameInstance.stage === 3 && item.status === 1 && currentPlayer.status === 1
         if(saveAction){
           useStatus = false
@@ -164,6 +183,12 @@ module.exports = app => ({
       info.push({text: '胜利！', level: 1})
       return $helper.wrapResult(true, info)
     }
+    if(gameInstance.status === 3){
+      let info = []
+      info.push({text: '房主结束了该场游戏，游戏已', level: 1})
+      info.push({text: '结束！', level: 2})
+      return $helper.wrapResult(true, info)
+    }
     if(gameInstance.stage === 0 && gameInstance.day === 1) {
       return $helper.wrapResult(true, broadcastMap['1-0'])
     }
@@ -211,10 +236,10 @@ module.exports = app => ({
         info.push({text: '，等待死亡玩家发动技能', level: 1})
         if(gameInstance.day === 1){
           // 第一天死亡有遗言
-          info.push({text: '第一晚死亡有', level: 1})
+          info.push({text: '，且第一晚死亡有', level: 1})
           info.push({text: '遗言', level: 2})
         } else {
-          info.push({text: '没有', level: 1})
+          info.push({text: '，没有', level: 1})
           info.push({text: '遗言', level: 2})
         }
         return $helper.wrapResult(true, info)
@@ -352,8 +377,11 @@ module.exports = app => ({
       if(antidoteSkill && antidoteSkill.status === 1){
         info.push({text: '昨晚死亡的是', level: 1})
         info.push({text: $support.getPlayerFullName(diePlayer), level: 2,})
+        if(killAction.to === currentPlayer.username && gameInstance.day !== 1){
+          info.push({text: '，女巫非首页不能自救', level: 2,})
+        }
       }
-      info.push({text: '请选择使用', level: 1})
+      info.push({text: '，请选择使用', level: 1})
       info.push({text: '解药', level: 3})
       info.push({text: '或者使用', level: 1})
       info.push({text: '毒药', level: 2})
@@ -386,6 +414,9 @@ module.exports = app => ({
         if(currentPlayer.outReason !== 'poison'){
           info.push({text: '，你现在可以', level: 1})
           info.push({text: '发动技能', level: 3})
+        } else {
+          info.push({text: '，你被毒药毒死，', level: 1})
+          info.push({text: '无法发动技能', level: 2})
         }
         return $helper.wrapResult(true, info)
       }
@@ -460,7 +491,10 @@ module.exports = app => ({
       }
       await $service.baseService.save(record, recordObject)
       $ws.connections.forEach(function (conn) {
-        conn.sendText('gameOver')
+        let url = '/lrs/' + gameInstance.roomId
+        if(conn.path === url){
+          conn.sendText('gameOver')
+        }
       })
       return $helper.wrapResult(true , 'Y')
     }
@@ -486,7 +520,10 @@ module.exports = app => ({
       }
       await $service.baseService.save(record, recordObject)
       $ws.connections.forEach(function (conn) {
-        conn.sendText('gameOver')
+        let url = '/lrs/' + gameInstance.roomId
+        if(conn.path === url){
+          conn.sendText('gameOver')
+        }
       })
       return $helper.wrapResult(true , 'Y')
     }
@@ -507,7 +544,10 @@ module.exports = app => ({
       }
       await $service.baseService.save(record, recordObject)
       $ws.connections.forEach(function (conn) {
-        conn.sendText('gameOver')
+        let url = '/lrs/' + gameInstance.roomId
+        if(conn.path === url){
+          conn.sendText('gameOver')
+        }
       })
       return $helper.wrapResult(true , 'Y')
     }

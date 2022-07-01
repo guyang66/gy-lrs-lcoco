@@ -80,14 +80,14 @@ const Index = (props) => {
     getRoomDetail()
   },[])
 
-  const getRoomDetail = () => {
+  const getRoomDetail = (isBegin) => {
     apiConfig.getRoomInfo({id: roomId}).then(data=>{
       console.log(data)
       setRoomDetail(data)
       if(data.status === 0){
         initSeat(data)
       } else if (data.status === 1) {
-        initGame(data.gameId, data._id)
+        initGame(data.gameId, data._id, isBegin)
       }
     }).catch(error=>{
       console.log('发生了错误！',error)
@@ -95,7 +95,7 @@ const Index = (props) => {
     })
   }
 
-  const initGame = (gameId, roomId) => {
+  const initGame = (gameId, roomId, isBegin) => {
     if(!gameId){
       console.log('前端：游戏id不存在')
       message.warn('游戏id不存在！')
@@ -108,6 +108,9 @@ const Index = (props) => {
       setPlayerInfo(data.playerInfo || [])
       setSkillInfo(data.skill || [])
       setActionInfo(data.action || [])
+      if(isBegin){
+        openRoleCard(data.roleInfo)
+      }
     }).catch(error=>{
       console.log('发生了错误！',error)
       setErrorPage(true)
@@ -174,7 +177,7 @@ const Index = (props) => {
       message.warn('新昵称不能为空！')
       return
     }
-    apiConfig.modifyNameInRoom({id: user._id, name: newName}).then(data=>{
+    apiConfig.modifyNameInRoom({id: user._id, roomId: roomId, name: newName}).then(data=>{
       message.success('修改成功！')
       setModifyModal(false)
       setNewName(null)
@@ -203,6 +206,8 @@ const Index = (props) => {
     confirm(
       {
         title: '确定进入下一阶段吗？',
+        okText: '确定',
+        cancelText: '取消',
         onOk() {
           apiConfig.nextStage({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
             message.success('操作成功！')
@@ -216,6 +221,8 @@ const Index = (props) => {
     confirm(
       {
         title: '确定进入下一阶段吗？',
+        okText: '确定',
+        cancelText: '取消',
         onOk() {
           userNextStageAction(gameInfo, roleInfo)
         }
@@ -284,6 +291,8 @@ const Index = (props) => {
       confirm(
         {
           title: '确定要救该玩家吗？',
+          okText: '确定',
+          cancelText: '取消',
           onOk() {
             antidotePlayerAction()
           }
@@ -332,6 +341,8 @@ const Index = (props) => {
       confirm(
         {
           title: '确定要自爆吗（自爆之后直接进入天黑）？',
+          okText: '确定',
+          cancelText: '取消',
           onOk() {
             boomAction()
           }
@@ -344,6 +355,8 @@ const Index = (props) => {
     confirm(
       {
         title: '确定要查验该玩家吗？',
+        okText: '确定',
+        cancelText: '取消',
         onOk() {
           fetchCheckPlayer(item)
         }
@@ -365,6 +378,8 @@ const Index = (props) => {
     confirm(
       {
         title: '确定要袭击该玩家吗？',
+        okText: '确定',
+        cancelText: '取消',
         onOk() {
           fetchAssaultPlayer(item)
         }
@@ -386,6 +401,8 @@ const Index = (props) => {
     confirm(
       {
         title: '确定要投票该玩家吗？',
+        okText: '确定',
+        cancelText: '取消',
         onOk() {
           apiConfig.votePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: item.username}).then(data=>{
             console.log(data)
@@ -463,6 +480,8 @@ const Index = (props) => {
     confirm(
       {
         title: '确定要毒杀该玩家吗？',
+        okText: '确定',
+        cancelText: '取消',
         onOk() {
           fetchPoisonPlayer(item)
         }
@@ -474,6 +493,8 @@ const Index = (props) => {
     confirm(
       {
         title: '确定要开枪带走该玩家吗？',
+        okText: '确定',
+        cancelText: '取消',
         onOk() {
           fetchShootPlayer(item)
         }
@@ -531,31 +552,19 @@ const Index = (props) => {
     })
   }
 
-  const userHasAction = (gameInfo, roleInfo) => {
-    if(roleInfo.role === 'predictor' && gameInfo.stage === 1){
-      // 预言家的回合可以有手动进入下一阶段的按钮
-      return true
+  const openRoleCard = (roleInfo) => {
+    let src = roleCardMap[currentRole.role]
+    if(roleInfo){
+      console.log(roleInfo)
+      src = roleCardMap[roleInfo.role]
     }
-    if(roleInfo.role === 'wolf' && gameInfo.stage === 2){
-      // 狼人的回合可以有手动进入下一阶段的按钮
-      return true
-    }
-
-    if(roleInfo.role === 'witch' && gameInfo.stage === 3){
-      // 女巫的回合可以有手动进入下一阶段的按钮
-      return true
-    }
-    return false
-  }
-
-  const openRoleCard = () => {
     const config = {
       title: '您的身份是',
       icon: null,
       okText: '确认',
       content: (
         <div className="role-card-wrap FBV FBAC">
-          <img className="card-img" src={roleCardMap[currentRole.role]}/>
+          <img className="card-img" src={src}/>
         </div>
       )
     }
@@ -564,10 +573,22 @@ const Index = (props) => {
 
 
   const gameDestroy = () => {
-
+    confirm(
+      {
+        title: '确定要结束游戏吗？',
+        okText: '确定',
+        cancelText: '取消',
+        onOk() {
+          apiConfig.gameDestroy({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+            message.success('操作成功')
+          })
+        }
+      }
+    )
   }
 
   const showWinner = (data) => {
+    console.log(data)
     const config = {
       okText: '确定',
       icon: null,
@@ -575,7 +596,7 @@ const Index = (props) => {
         <div className="color-red winner-title FBH FBJC">
           <div className={cls({
             'color-red': data.winner === 0,
-            'color-orange': data.winner = 1
+            'color-orange': data.winner === 1
           })}>{data.winnerString}</div>
           <div className="mar-l5 color-green">胜利!</div>
         </div>
@@ -613,8 +634,7 @@ const Index = (props) => {
     } else if (msg === 'refreshGame') {
       initGame(gameDetail._id, roomDetail._id)
     } else if (msg === 'gameStart'){
-      getRoomDetail()
-      openRoleCard()
+      getRoomDetail(true)
     } else if (msg === 'gameOver') {
       apiConfig.gameResult({id: gameDetail._id}).then(data=>{
         // 关闭所有的弹窗
@@ -775,7 +795,7 @@ const Index = (props) => {
         {
           roomDetail.status === 1 ? (
             <div className="game-content">
-              <RoleView currentRole={currentRole} gameDetail={gameDetail} skillInfo={skillInfo} useSkill={useSkill} onOpen={openRoleCard} />
+              <RoleView currentRole={currentRole} gameDetail={gameDetail} skillInfo={skillInfo} useSkill={useSkill} onOpen={()=>{openRoleCard()}} />
               <div className="desk-content mar-t10">
                 <div className="game-title mar-t5 FBH FBAC FBJC">
                   <div className="color-main">{'第' + gameDetail.day + '天'}</div>
@@ -916,6 +936,7 @@ const Index = (props) => {
                   </div>
                 ) : null
               }
+              <div style={{width:'100%', height: '100px'}}/>
             </div>
           ) : null
         }
@@ -934,10 +955,20 @@ const Index = (props) => {
           </Button>
         </div>
 
+        {
+          gameDetail._id ? (
+            <div
+              onClick={()=>{lookRecord()}}
+              className="btn-primary btn-record">
+              {gameDetail.status === 2 ? '复盘' : '查看记录'}
+            </div>
+          ) : null
+        }
+
         <div
-          onClick={()=>{lookRecord()}}
-          className="btn-primary btn-record">
-          {gameDetail.status === 1 ? '查看记录' : '复盘'}
+          onClick={()=>{getRoomDetail()}}
+          className="btn-tag btn-refresh">
+          刷新页面
         </div>
 
         {
@@ -982,7 +1013,6 @@ const Index = (props) => {
           </div>
         </div>
       </Modal>
-
 
       <Modal
         title="游戏事件记录"
@@ -1040,15 +1070,14 @@ const Index = (props) => {
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
         visible={checkModal}
-        onOk={()=>{
-          userNextStage(gameDetail, currentRole)
-        }}
-        okText="下一阶段"
-        cancelText="取消"
-        onCancel={() => {
-          setCheckPlayer([])
-          setCheckModal(false)
-        }}
+        footer={[
+          <Button className="btn-primary" onClick={()=>{
+            setCheckPlayer([])
+            setCheckModal(false)
+          }}>
+            关闭
+          </Button>
+        ]}
       >
         <div className="content-wrap">
           <div className="content-view">
@@ -1126,15 +1155,14 @@ const Index = (props) => {
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
         visible={assaultModal}
-        onOk={()=>{
-          userNextStage(gameDetail, currentRole)
-        }}
-        okText="下一阶段"
-        cancelText="取消"
-        onCancel={() => {
-          setAssaultPlayer([])
-          setAssaultModal(false)
-        }}
+        footer={[
+          <Button className="btn-primary" onClick={()=>{
+            setAssaultPlayer([])
+            setAssaultModal(false)
+          }}>
+            关闭
+          </Button>
+        ]}
       >
         <div className="content-wrap">
           <div className="content-view">
@@ -1203,7 +1231,6 @@ const Index = (props) => {
         </div>
       </Modal>
 
-
       <Modal
         title="投票"
         centered
@@ -1213,16 +1240,14 @@ const Index = (props) => {
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
         visible={voteModal}
-        onOk={()=>{
-          setVotePlayer([])
-          setVoteModal(false)
-        }}
-        okText="下一阶段"
-        cancelText="取消"
-        onCancel={() => {
-          setVotePlayer([])
-          setVoteModal(false)
-        }}
+        footer={[
+          <Button className="btn-primary" onClick={()=>{
+            setVotePlayer([])
+            setVoteModal(false)
+          }}>
+            关闭
+          </Button>
+        ]}
       >
         <div className="content-wrap">
           <div className="content-view">
@@ -1290,7 +1315,7 @@ const Index = (props) => {
       </Modal>
 
       <Modal
-        title="投票"
+        title="使用毒药"
         centered
         className="modal-view-wrap player-click-modal"
         maskClosable={false}
@@ -1298,16 +1323,14 @@ const Index = (props) => {
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
         visible={poisonModal}
-        onOk={()=>{
-          setPoisonPlayer([])
-          setPoisonModal(false)
-        }}
-        okText="下一阶段"
-        cancelText="取消"
-        onCancel={() => {
-          setPoisonPlayer([])
-          setPoisonModal(false)
-        }}
+        footer={[
+          <Button className="btn-primary" onClick={()=>{
+            setPoisonPlayer([])
+            setPoisonModal(false)
+          }}>
+            关闭
+          </Button>
+        ]}
       >
         <div className="content-wrap">
           <div className="content-view">
@@ -1362,18 +1385,8 @@ const Index = (props) => {
               </div>
             ) : null
           }
-          {
-            poisonResult ? (
-              <div className="prompt-view mar-l20 mar-r20 mar-t10">
-                {
-                  poisonResult.prompt
-                }
-              </div>
-            ) : null
-          }
         </div>
       </Modal>
-
 
       <Modal
         title="开枪"
@@ -1384,15 +1397,14 @@ const Index = (props) => {
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
         visible={shootModal}
-        onOk={()=>{
-          userNextStage(gameDetail, currentRole)
-        }}
-        okText="下一阶段"
-        cancelText="取消"
-        onCancel={() => {
-          setShootPlayer([])
-          setShootModal(false)
-        }}
+        footer={[
+          <Button className="btn-primary" onClick={()=>{
+            setShootPlayer([])
+            setShootModal(false)
+          }}>
+            关闭
+          </Button>
+        ]}
       >
         <div className="content-wrap">
           <div className="content-view">
@@ -1455,15 +1467,6 @@ const Index = (props) => {
                     <span className="color-red">{shootResult.position + '号玩家（' + shootResult.name + ')。'}</span>
                   </div>
                 </div>
-              </div>
-            ) : null
-          }
-          {
-            shootResult ? (
-              <div className="prompt-view mar-l20 mar-r20 mar-t10">
-                {
-                  shootResult.prompt
-                }
               </div>
             ) : null
           }

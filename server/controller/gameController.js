@@ -123,8 +123,10 @@ module.exports = app => ({
     await $service.baseService.save(record, stageFirstRecord)
 
     $ws.connections.forEach(function (conn) {
-      //todo:只能对应的频道发消息
-      conn.sendText('gameStart')
+      let url = '/lrs/' + gameInstance.roomId
+      if(conn.path === url){
+        conn.sendText('gameStart')
+      }
     })
     ctx.body = $helper.Result.success('创建游戏成功！')
   },
@@ -147,10 +149,6 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'该游戏不存在！')
       return
     }
-    // if(gameInstance.status === 2){
-    //   ctx.body = $helper.Result.fail(-1,'该游戏已结束！')
-    //   return
-    // }
     let currentUser = await $service.baseService.userInfo(ctx)
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
@@ -514,7 +512,10 @@ module.exports = app => ({
     }
     await $service.baseService.updateById(game, gameInstance._id, update)
     $ws.connections.forEach(function (conn) {
-      conn.sendText('refreshGame')
+      let url = '/lrs/' + gameInstance.roomId
+      if(conn.path === url){
+        conn.sendText('refreshGame')
+      }
     })
     ctx.body = $helper.Result.success('操作成功！')
   },
@@ -593,7 +594,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
-    if(gameInstance.status !== 1){
+    if(gameInstance.status === 2){
       let winner
       if(gameInstance.winner !== null && gameInstance.winner !== undefined){
         winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
@@ -683,8 +684,10 @@ module.exports = app => ({
       campName: targetCampName,
     }
     $ws.connections.forEach(function (conn) {
-      //todo:只能对应的频道发消息
-      conn.sendText('refreshGame')
+      let url = '/lrs/' + gameInstance.roomId
+      if(conn.path === url){
+        conn.sendText('refreshGame')
+      }
     })
 
     ctx.body = $helper.Result.success(r)
@@ -715,7 +718,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
-    if(gameInstance.status !== 1){
+    if(gameInstance.status === 2){
       let winner
       if(gameInstance.winner !== null && gameInstance.winner !== undefined){
         winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
@@ -806,7 +809,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
-    if(gameInstance.status !== 1){
+    if(gameInstance.status === 2){
       let winner
       if(gameInstance.winner !== null && gameInstance.winner !== undefined){
         winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
@@ -924,7 +927,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
-    if(gameInstance.status !== 1){
+    if(gameInstance.status === 2){
       let winner
       if(gameInstance.winner !== null && gameInstance.winner !== undefined){
         winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
@@ -994,7 +997,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
-    if(gameInstance.status !== 1){
+    if(gameInstance.status === 2){
       let winner
       if(gameInstance.winner !== null && gameInstance.winner !== undefined){
         winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
@@ -1099,7 +1102,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
-    if(gameInstance.status !== 1){
+    if(gameInstance.status === 2){
       let winner
       if(gameInstance.winner !== null && gameInstance.winner !== undefined){
         winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
@@ -1109,7 +1112,6 @@ module.exports = app => ({
       return
     }
     if(gameInstance.stage !== 4 && gameInstance.stage !== 7) {
-      console.log(gameInstance.stage)
       ctx.body = $helper.Result.fail(-1,'该阶段不能进行开枪操作')
       return
     }
@@ -1200,7 +1202,10 @@ module.exports = app => ({
     })
 
     $ws.connections.forEach(function (conn) {
-      conn.sendText('refreshGame')
+      let url = '/lrs/' + gameInstance.roomId
+      if(conn.path === url){
+        conn.sendText('refreshGame')
+      }
     })
     ctx.body = $helper.Result.success(r)
   },
@@ -1227,7 +1232,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
-    if(gameInstance.status !== 1){
+    if(gameInstance.status === 2){
       let winner
       if(gameInstance.winner !== null && gameInstance.winner !== undefined){
         winner = gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
@@ -1237,7 +1242,6 @@ module.exports = app => ({
       return
     }
     if(gameInstance.stage !== 5 ) {
-      console.log(gameInstance.stage)
       ctx.body = $helper.Result.fail(-1,'该阶段不能进行开枪操作')
       return
     }
@@ -1297,7 +1301,10 @@ module.exports = app => ({
     let update = {stage: 0, day: gameInstance.day + 1}
     await $service.baseService.updateById(game, gameInstance._id, update)
     $ws.connections.forEach(function (conn) {
-      conn.sendText('refreshGame')
+      let url = '/lrs/' + gameInstance.roomId
+      if(conn.path === url){
+        conn.sendText('refreshGame')
+      }
     })
     ctx.body = $helper.Result.success(true)
   },
@@ -1324,6 +1331,51 @@ module.exports = app => ({
       winnerString:  gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
     }
     ctx.body = $helper.Result.success(result)
+  },
+
+
+  async gameDestroy (ctx) {
+    const { $service, $helper, $model, $ws } = app
+    const { game, record, room } = $model
+    const { roomId, gameId } = ctx.query
+    if(!roomId || roomId === ''){
+      ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
+      return
+    }
+    if(!gameId || gameId === ''){
+      ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
+      return
+    }
+    let roomInstance = await $service.baseService.queryById(room, roomId)
+    let gameInstance = await $service.baseService.queryById(game, gameId)
+    if(!gameInstance){
+      ctx.body = $helper.Result.fail(-1,'游戏不存在！')
+      return
+    }
+    let currentUser = await $service.baseService.userInfo(ctx)
+    if(currentUser.defaultRole !== 'host'){
+      ctx.body = $helper.Result.fail(-1,'只有房主角色才能结束游戏')
+      return
+    }
+    let update = {status: 3}
+    await $service.baseService.updateById(game, gameInstance._id, update)
+
+
+    let gameRecord = {
+      roomId: roomInstance._id,
+      gameId: gameInstance._id,
+      content: '房主结束了该场游戏，游戏已结束！',
+      isCommon: 1,
+      isTitle: 0
+    }
+    await $service.baseService.save(record, gameRecord)
+    $ws.connections.forEach(function (conn) {
+      let url = '/lrs/' + gameInstance.roomId
+      if(conn.path === url){
+        conn.sendText('refreshGame')
+      }
+    })
+    ctx.body = $helper.Result.success('ok')
   }
 
 })

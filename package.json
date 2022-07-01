@@ -49,13 +49,14 @@
     "react-app-rewired": "^2.1.5",
     "react-document-title": "^2.0.3",
     "react-dom": "^17.0.2",
+    "react-error-overlay": "6.0.9",
     "react-hot-loader": "^4.12.21",
     "react-router-dom": "^5.2.0",
     "react-scripts": "4.0.3",
+    "react-websocket": "^2.1.0",
     "stylus": "^0.54.7",
     "stylus-loader": "^3.0.2",
-    "urlparse": "0.0.1",
-    "react-websocket": "^2.1.0"
+    "urlparse": "0.0.1"
   },
   "devDependencies": {
     "mobx-react": "^7.5.0",

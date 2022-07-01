@@ -178,5 +178,13 @@ export default {
       method: 'get',
       params,
     })
+  },
+
+  gameDestroy (params) {
+    return fetch({
+      url: urlPrefix + 'game/destroy/auth',
+      method: 'get',
+      params,
+    })
   }
 }
