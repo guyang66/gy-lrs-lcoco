@@ -1,11 +1,19 @@
 import React, {useState, useEffect} from "react";
 import "./index.styl";
 import {inject, observer} from "mobx-react";
+import RoleView from "@components/playerRoleInfo";
 import apiConfig from '@api/config'
 import {withRouter} from "react-router-dom";
 import Websocket from 'react-websocket';
-import {Button, Modal, Input, Radio, message} from "antd";
-const { confirm } = Modal;
+import predictor from "@assets/images/role/card/yuyanjia.webp"
+import hunter from "@assets/images/role/card/lieren.webp"
+import witch from "@assets/images/role/card/nvwu.webp"
+import villager from "@assets/images/role/card/pingming.webp"
+import wolf from "@assets/images/role/card/langren.webp"
+import vote from "@assets/images/role/skill/vote.svg"
+import loser from "@assets/images/shibai.svg"
+import {Button, Modal, Input, message} from "antd";
+const { confirm, info } = Modal;
 import helper from '@helper'
 import cls from "classnames";
 
@@ -14,7 +22,14 @@ const Index = (props) => {
   const {user} = appStore
 
   let roomId =  history.location.state && history.location.state.id
-  // roomId = '62b9b42096a4fa9a81de4475'
+
+  const roleCardMap = {
+    'predictor': predictor,
+    'hunter': hunter,
+    'witch': witch,
+    'villager': villager,
+    'wolf': wolf,
+  }
 
   const [roomDetail, setRoomDetail] = useState({})
   const [gameDetail, setGameDetail] = useState({})
@@ -56,7 +71,10 @@ const Index = (props) => {
   const [shootPlayer, setShootPlayer] = useState([])
   const [shootResult, setShootResult] = useState(null)
 
+  const [winner, setWinner] = useState({})
+
   const [socketOn,setSocketOn] = useState(true)
+
 
   useEffect(()=>{
     getRoomDetail()
@@ -530,6 +548,60 @@ const Index = (props) => {
     return false
   }
 
+  const openRoleCard = () => {
+    const config = {
+      title: '您的身份是',
+      icon: null,
+      okText: '确认',
+      content: (
+        <div className="role-card-wrap FBV FBAC">
+          <img className="card-img" src={roleCardMap[currentRole.role]}/>
+        </div>
+      )
+    }
+    info(config)
+  }
+
+
+  const gameDestroy = () => {
+
+  }
+
+  const showWinner = (data) => {
+    const config = {
+      okText: '确定',
+      icon: null,
+      title: (
+        <div className="color-red winner-title FBH FBJC">
+          <div className={cls({
+            'color-red': data.winner === 0,
+            'color-orange': data.winner = 1
+          })}>{data.winnerString}</div>
+          <div className="mar-l5 color-green">胜利!</div>
+        </div>
+      ),
+      content: (
+        <div className="winner-wrap">
+          <div className="img-card-wrap FBV FBAC FBJC">
+            <img src={roleCardMap[currentRole.role]} />
+            {
+              currentRole.camp === data.winner ? null : (
+                <>
+                  <div className="winner-mask" />
+                  <div className="winner-mask-text-wrap FBV FBAC FBJC">
+                    <img src={loser} />
+                    <div className="txt mar-t10">你输了~</div>
+                  </div>
+                </>
+              )
+            }
+          </div>
+        </div>
+      )
+    }
+    info(config)
+  }
+
   const wsMessage = (msg) => {
     console.log(msg)
     // todo: 返回 action、username，同一个人则不处理消息
@@ -540,6 +612,23 @@ const Index = (props) => {
       }
     } else if (msg === 'refreshGame') {
       initGame(gameDetail._id, roomDetail._id)
+    } else if (msg === 'gameStart'){
+      getRoomDetail()
+      openRoleCard()
+    } else if (msg === 'gameOver') {
+      apiConfig.gameResult({id: gameDetail._id}).then(data=>{
+        // 关闭所有的弹窗
+        setAssaultModal(false)
+        setRecordModal(false)
+        setModifyModal(false)
+        setCheckModal(false)
+        setShootModal(false)
+        setPoisonModal(false)
+        setVoteModal(false)
+
+        setWinner(data)
+        showWinner(data)
+      })
     }
   }
 
@@ -566,10 +655,17 @@ const Index = (props) => {
         <div className="header">
           <div className="FBH FBAC FBJC">
             <span className="room-title">房间名：</span>
-            <span className="room-title welcome-user color-orange">{roomDetail.name}</span>
-            <span className="room-title mar-l5">密码：</span>
-            <span className="room-title welcome-user color-orange">{roomDetail.password}</span>
+            <span className="room-title welcome-user color-orange">{roomDetail.name}（{roomDetail.password}）</span>
           </div>
+          {
+            helper.hasCPermission('system.host', appStore) && gameDetail.status === 1 ? (
+              <Button
+                onClick={gameDestroy}
+                className="btn-danger game-over">
+                结束游戏
+              </Button>
+            ) : null
+          }
         </div>
 
         {
@@ -676,42 +772,19 @@ const Index = (props) => {
             </div>
           ) : null
         }
-
         {
           roomDetail.status === 1 ? (
             <div className="game-content">
-              <div className="normal-title mar-t5">
-                <span>您的角色：</span>
-                <span className={cls({
-                  'role-txt-wolf': currentRole.role === 'wolf',
-                  'role-txt-villager': currentRole.role === 'villager',
-                  'role-txt-predictor': currentRole.role === 'predictor',
-                  'role-txt-witch': currentRole.role === 'witch',
-                  'role-txt-hunter': currentRole.role === 'hunter'
-                })}>{currentRole.roleName}</span>
-                <span className="mar-l10">您的阵营：</span>
-                <span className={cls({
-                  'role-txt-camp-good': currentRole.camp === 1,
-                  'role-txt-camp-wolf': currentRole.camp === 0,
-                })}>{currentRole.camp === 1 ? '好人阵营' : '狼人阵营'}</span>
-                <span className="mar-l10">您的状态：</span>
-                <span className={cls({
-                  'role-txt-camp-good': currentRole.status === 1,
-                  'role-txt-camp-wolf': currentRole.status === 0,
-                })}>{currentRole.status === 1 ? '存活' : '出局'}</span>
-              </div>
-
-              <div className="normal-title mar-t5">
-                <span>游戏进行到：</span>
-                <span className="color-main">{'第' + gameDetail.day + '天'}</span>
-                <span className="mar-l5">-</span>
-                <span className="color-red mar-l5">{gameDetail.dayTag}</span>
-                <span className="mar-l10">阶段/回合：</span>
-                <span className="color-main">{'第' + (gameDetail.stage + 1) + '阶段：'}</span>
-                <span className="color-red">{gameDetail.stageName}</span>
-              </div>
-
-              <div className="desk-content mar-t5">
+              <RoleView currentRole={currentRole} gameDetail={gameDetail} skillInfo={skillInfo} useSkill={useSkill} onOpen={openRoleCard} />
+              <div className="desk-content mar-t10">
+                <div className="game-title mar-t5 FBH FBAC FBJC">
+                  <div className="color-main">{'第' + gameDetail.day + '天'}</div>
+                  <div className="mar-l5">-</div>
+                  <div className="color-red mar-l5">{gameDetail.dayTag}</div>
+                  <div className="mar-l5">-</div>
+                  <div className="color-main mar-l5">{'第' + (gameDetail.stage + 1) + '阶段：'}</div>
+                  <div className="color-red">{gameDetail.stageName}</div>
+                </div>
                 {
                   (playerInfo || []).map(item=>{
                     return (
@@ -769,9 +842,9 @@ const Index = (props) => {
                 }
               </div>
 
-              <div className="mar-t10 FBH">
-                <span className="normal-title">公告：</span>
-                <div className="notice-content">
+              <div className="mar-t10">
+                <div className="bc-title mar-b5 color-red">公告</div>
+                <div className="notice-content FBV FBJC FBAC">
                   <div className="txt">
                     {
                       (gameDetail.broadcast || []).map((item,index)=>{
@@ -791,135 +864,58 @@ const Index = (props) => {
                       })
                     }
                   </div>
-                </div>
-              </div>
-
-              {
-                gameDetail.systemTip ?  (
-                  <div className="mar-t10 FBH">
-                    <span className="normal-title">系统提示：</span>
-                    <div className="notice-content">
-                      <div className="txt">
-                        {
-                          (gameDetail.systemTip || []).map((item, index)=>{
-                            return (
-                              <span
-                                key={item.text + index}
-                                className={cls({
-                                  'color-black': item.level === 1,
-                                  'color-red': item.level === 2,
-                                  'color-success': item.level === 3,
-                                  'color-main': item.level === 4,
-                                })}
-                              >
+                  <div className="txt mar-t10">
+                    {
+                      (gameDetail.systemTip || []).map((item, index)=>{
+                        return (
+                          <span
+                            key={item.text + index}
+                            className={cls({
+                              'color-black': item.level === 1,
+                              'color-red': item.level === 2,
+                              'color-success': item.level === 3,
+                              'color-main': item.level === 4,
+                            })}
+                          >
                             {item.text}
                           </span>
-                            )
-                          })
-                        }
-                      </div>
-                    </div>
+                        )
+                      })
+                    }
                   </div>
-                ) : null
-              }
-              {
-                gameDetail.status === 1 ? (
-                  <div className="mar-t5 FBH FBAC">
-                    <span className="normal-title">您的技能：</span>
-                    <div className="skill-content mar-t5 mar-l10">
-                      {
-                        skillInfo.map(item=>{
-                          return (
-                            <div key={item.key} className="FBH FBAC">
-                              {
-                                item.show ? (
-                                  <Button
-                                    onClick={()=>{
-                                      useSkill(item.key)
-                                    }}
-                                    disabled={!item.canUse}
-                                    className={cls({
-                                      'skill-btn': true,
-                                      'btn-folk': item.key === 'assault' && item.canUse,
-                                      'btn-delete': item.key === 'boom' && item.canUse,
-                                      'btn-primary': item.key === 'check' && item.canUse,
-                                      'btn-success': item.key === 'antidote' && item.canUse,
-                                      'btn-error': item.key === 'poison' && item.canUse,
-                                      'btn-warning': item.key === 'shoot' && item.canUse,
-                                      'btn-info': !item.canUse
-                                    })}>
-                                    {item.name}
-                                  </Button>
-                                ) : null
-                              }
-                            </div>
-                          )
-                        })
-                      }
-                      {
-                        actionInfo.map(item=>{
-                          return (
-                            <div key={item.key} className="FBH FBAC">
-                              {
-                                item.show ? (
-                                  <Button
-                                    onClick={()=>{
-                                      useSkill(item.key)
-                                    }}
-                                    disabled={!item.canUse}
-                                    className={cls({
-                                      'skill-btn': true,
-                                      'btn-primary': item.key === 'vote' && item.canUse,
-                                      'btn-info': !item.canUse
-                                    })}>
-                                    {item.name}
-                                  </Button>
-                                ) : null
-                              }
-                            </div>
-                          )
-                        })
-                      }
-                    </div>
-                  </div>
-                ) : null
-              }
-              <div className="mar-t5 FBH FBAC">
-                <span className="normal-title">操作：</span>
-                <div className="skill-content mar-t5 mar-l10 FBH FBAC">
-                  <Button
-                    onClick={()=>{lookRecord()}}
-                    className="btn-primary skill-btn">
-                    查看记录
-                  </Button>
-                  {
-                    helper.hasCPermission('system.host', appStore) && gameDetail.status === 1 ? (
-                      <Button
-                        onClick={()=>{nextStage()}}
-                        className="btn-warning skill-btn">
-                        进入下一阶段
-                      </Button>
-                    ) : null
-                  }
-                  {
-                    (gameDetail.status === 1 && userHasAction(gameDetail, currentRole) && !helper.hasCPermission('system.host', appStore)) ? (
-                      <Button
-                        onClick={()=>{userNextStage(gameDetail, currentRole)}}
-                        className="btn-warning skill-btn">
-                        进入下一阶段
-                      </Button>
-                    ) : null
-                  }
-                  {
-                    helper.hasCPermission('system.host', appStore) && gameDetail.status === 1 ? (
-                      <Button
-                        className="btn-danger skill-btn">
-                        结束游戏
-                      </Button>
-                    ) : null
-                  }
                 </div>
               </div>
+              {
+                gameDetail.status === 1 ? (
+                  <div className="mar-t10 FBH FBAC">
+                    {
+                      actionInfo.map(item=>{
+                        return (
+                          <div key={item.key} className="FBH FBAC" style={{width: '100%'}}>
+                            {
+                              item.show ? (
+                                <Button
+                                  onClick={()=>{
+                                    useSkill(item.key)
+                                  }}
+                                  disabled={!item.canUse}
+                                  className={cls({
+                                    'skill-btn': true,
+                                    'btn-primary': item.key === 'vote' && item.canUse,
+                                    'btn-info': !item.canUse
+                                  })}>
+                                  <img className="vote-icon mar-r5" src={vote}/>
+                                  <span>{item.name}</span>
+                                </Button>
+                              ) : null
+                            }
+                          </div>
+                        )
+                      })
+                    }
+                  </div>
+                ) : null
+              }
             </div>
           ) : null
         }
@@ -937,6 +933,22 @@ const Index = (props) => {
             退出房间
           </Button>
         </div>
+
+        <div
+          onClick={()=>{lookRecord()}}
+          className="btn-primary btn-record">
+          {gameDetail.status === 1 ? '查看记录' : '复盘'}
+        </div>
+
+        {
+          helper.hasCPermission('system.host', appStore) && gameDetail.status === 1 ? (
+            <div
+              onClick={()=>{nextStage()}}
+              className="btn-warning btn-next-stage">
+              下一阶段
+            </div>
+          ) : null
+        }
       </div>
 
       <Modal
@@ -975,22 +987,21 @@ const Index = (props) => {
       <Modal
         title="游戏事件记录"
         centered
+        closable={false}
         className="modal-view-wrap game-record-modal"
         maskClosable={false}
         maskStyle={{
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
         visible={recordModal}
-        onOk={()=>{
-          setGameRecord([])
-          setRecordModal(false)
-        }}
-        okText="关闭"
-        cancelText="取消"
-        onCancel={() => {
-          setGameRecord([])
-          setRecordModal(false)
-        }}
+        footer={[
+          <Button className="btn-primary" onClick={()=>{
+            setGameRecord([])
+            setRecordModal(false)
+          }}>
+            关闭
+          </Button>
+        ]}
       >
         <div className="content-wrap">
           <div className="content-view content-view-scroll">
@@ -1103,15 +1114,6 @@ const Index = (props) => {
               </div>
             ) : null
           }
-          {
-            checkResult ? (
-              <div className="prompt-view mar-l20 mar-r20 mar-t10">
-                {
-                  checkResult.prompt
-                }
-              </div>
-            ) : null
-          }
         </div>
       </Modal>
 
@@ -1195,15 +1197,6 @@ const Index = (props) => {
                     <span className="color-red">{assaultResult.position + '号玩家（' + assaultResult.name + ')。'}</span>
                   </div>
                 </div>
-              </div>
-            ) : null
-          }
-          {
-            assaultResult ? (
-              <div className="prompt-view mar-l20 mar-r20 mar-t10">
-                {
-                  assaultResult.prompt
-                }
               </div>
             ) : null
           }

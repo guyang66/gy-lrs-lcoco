@@ -170,6 +170,13 @@ export default {
       method: 'get',
       params,
     })
-  }
+  },
 
+  gameResult (params) {
+    return fetch({
+      url: urlPrefix + 'game/result/auth',
+      method: 'get',
+      params,
+    })
+  }
 }

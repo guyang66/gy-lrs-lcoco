@@ -124,7 +124,7 @@ module.exports = app => ({
 
     $ws.connections.forEach(function (conn) {
       //todo:只能对应的频道发消息
-      conn.sendText('refreshRoom')
+      conn.sendText('gameStart')
     })
     ctx.body = $helper.Result.success('创建游戏成功！')
   },
@@ -495,21 +495,22 @@ module.exports = app => ({
         // 屠边 - 屠神 => 游戏结束，狼人胜利
         await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: 0})
       }
-
-      //游戏继续
-      let stageFirstRecord = {
-        roomId: gameInstance._id,
-        gameId: gameInstance._id,
-        content: '天黑请闭眼。',
-        isCommon: 1,
-      }
-      await $service.baseService.save(record, stageFirstRecord)
-
     }
 
     let update = {stage: nextStage}
     if(nextStage === 0){
       update.day = gameInstance.day + 1
+      let recordObject = {
+        roomId: roomId,
+        gameId: gameInstance._id,
+        day: gameInstance.day,
+        stage: gameInstance.stage,
+        view: [],
+        isCommon: 1,
+        isTitle: 0,
+        content: '天黑请闭眼。'
+      }
+      await $service.baseService.save(record, recordObject)
     }
     await $service.baseService.updateById(game, gameInstance._id, update)
     $ws.connections.forEach(function (conn) {
@@ -1181,6 +1182,23 @@ module.exports = app => ({
     await $service.baseService.updateById(player, targetPlayer._id,{status: 0, outReason: 'shoot'})
     await $service.gameService.settleGameOver(ctx, gameInstance._id)
 
+    let newSkillStatus = []
+    let skills = currentPlayer.skill
+    skills.forEach(item=>{
+      if(item.key === 'shoot'){
+        newSkillStatus.push({
+          name: item.name,
+          key: item.key,
+          status: 0
+        })
+      } else {
+        newSkillStatus.push(item)
+      }
+    })
+    await $service.baseService.updateById(player, currentPlayer._id, {
+      skill: newSkillStatus
+    })
+
     $ws.connections.forEach(function (conn) {
       conn.sendText('refreshGame')
     })
@@ -1282,6 +1300,30 @@ module.exports = app => ({
       conn.sendText('refreshGame')
     })
     ctx.body = $helper.Result.success(true)
+  },
+
+  async gameResult (ctx) {
+    const { $service, $helper, $model} = app
+    const { game} = $model
+    const { id } = ctx.query
+    if(!id || id === ''){
+      ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
+      return
+    }
+    let gameInstance = await $service.baseService.queryById(game, id)
+    if(!gameInstance){
+      ctx.body = $helper.Result.fail(-1,'游戏不存在！')
+      return
+    }
+    if(gameInstance.status !== 2){
+      ctx.body = $helper.Result.fail(-1,'游戏还在进行中或游戏异常！')
+      return
+    }
+    let result = {
+      winner: gameInstance.winner,
+      winnerString:  gameInstance.winner === 1 ? '好人阵营' : '狼人阵营'
+    }
+    ctx.body = $helper.Result.success(result)
   }
 
 })

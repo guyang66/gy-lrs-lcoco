@@ -22,6 +22,8 @@ module.exports = app => {
 
   router.get('/api/game/start/auth', $middleware.auth, $controller.gameController.gameStart)
   router.get('/api/game/info/auth', $middleware.auth, $controller.gameController.getGameInfo)
+  router.get('/api/game/result/auth', $middleware.auth, $controller.gameController.gameResult)
+
   router.get('/api/game/nextStage/auth', $middleware.auth, $controller.gameController.nextStage)
   router.get('/api/game/userNextStage/auth', $middleware.auth, $controller.gameController.nextStage)
   router.get('/api/game/record/auth', $middleware.auth, $controller.gameController.commonGameRecord)

@@ -28,6 +28,11 @@
         line-height 24px
         font-size 14px
         font-weight 500
+      .bc-title
+        width 100%
+        text-align center
+        font-weight bold
+        font-size 18px
       .wait-content
         background-color #eeeeee
         overflow hidden
@@ -52,11 +57,17 @@
         border 1px solid #eeeeee
         overflow hidden
         height 220px
+        width 100%
         position relative
         padding 5px
         flex-wrap wrap
         flex-direction row
         display flex
+        .game-title
+          width 100%
+          height 40px
+          font-size 16px
+          font-weight bold
         .seat-cell
           width 33.33% - 2.5px
           height 60px
@@ -96,7 +107,7 @@
         border-radius 4px
         border 1px solid #eeeeee
         overflow hidden
-        height 300px
+        height 340px
         position relative
         padding 5px
         flex-wrap wrap
@@ -160,31 +171,31 @@
                 color red
                 line-height 80px
       .notice-content
-        border-radius 2px
+        border-radius 4px
+        text-align center
         overflow hidden
         max-height 180px
-        min-height 24px
+        min-height 60px
         position relative
+        border 1px solid #eeeeee
         display flex
         flex-wrap wrap
+        padding 20px
         .txt
           line-height 24px
           color black
           font-weight 500
+          width 100%
           font-style oblique
-          font-size 14px
-      .skill-content
-        border 1px solid #eeeeee
-        border-radius 2px
-        overflow hidden
-        min-height 70px
-        position relative
-        display flex
-        flex-wrap wrap
-        width calc(100% - 80px)
-        .skill-btn
-          min-width 80px
-          margin-left 20px
+          font-size 16px
+      .skill-btn
+        width 100%
+        height 40px
+        font-size 14px
+        font-weight bold
+        .vote-icon
+          width 24px
+          height 24px
       .role-bg-wolf
         background-color black
       .role-bg-villager
@@ -213,6 +224,7 @@
       width 100%
       box-shadow 0 2px 4px rgba(0,21,41,.08)
       height 60px
+      position relative
       .room-title
         font-size 20px
         color #333333
@@ -221,6 +233,11 @@
         font-weight 500
       .welcome-user
         font-style italic
+      .game-over
+        position absolute
+        top 50%
+        right 20px
+        transform translateY(-50%)
     .footer
       width 100%
       height 60px
@@ -231,38 +248,60 @@
         width 100%
         height 100%
         font-size 16px
+    .btn-record
+      position fixed
+      bottom 80px
+      font-size 14px
+      font-weight bold
+      height 80px
+      width 80px
+      border-radius 40px
+      text-align center
+      line-height 80px
+      cursor pointer
+      left calc(50% + 150px)
+    .btn-next-stage
+      position fixed
+      bottom 80px
+      font-size 14px
+      font-weight bold
+      height 80px
+      width 80px
+      border-radius 40px
+      text-align center
+      line-height 80px
+      cursor pointer
+      left calc(50% - 230px)
 .error-view
   width 100%
   .desc
     font-size 16px
     font-weight 500
     text-align center
-
-.game-record-modal
-  .content-wrap
-    width 100%
-    .content-view
-      border-radius 4px
-      border 1px solid #eeeeee
-      overflow hidden
-      height 300px
-      position relative
-      margin-left 20px
-      margin-right 20px
-      padding 10px 20px 20px 20px
-      .record-cell
-        line-height 16px
-        margin-top 4px
-        margin-bottom 4px
-      .cell-title
-        text-align center
-        font-weight bold
-        font-size 16px
-        line-height 24px
-        margin-top 8px
-        margin-bottom 8px
-    .content-view-scroll
-      overflow-y scroll
+.content-wrap
+  width 100%
+  .content-view
+    border-radius 4px
+    border 1px solid #eeeeee
+    overflow hidden
+    height 300px
+    position relative
+    margin-left 20px
+    margin-right 20px
+    padding 10px 20px 20px 20px
+    .record-cell
+      line-height 16px
+      margin-top 4px
+      margin-bottom 4px
+    .cell-title
+      text-align center
+      font-weight bold
+      font-size 16px
+      line-height 24px
+      margin-top 8px
+      margin-bottom 8px
+  .content-view-scroll
+    overflow-y scroll
 .player-click-modal
   .content-wrap
     width 100%
@@ -326,3 +365,43 @@
       color orange
       font-style italic
       font-weight 500
+.role-card-wrap
+  .card-img
+    width 100%
+    height auto
+.ant-modal-confirm-content
+  margin-left 0!important
+
+.winner-wrap
+  width 100%
+  .img-card-wrap
+    position relative
+    img
+      width 80%
+      height auto
+    .winner-mask
+      position absolute
+      width 80%
+      height 100%
+      left 10%
+      top 0
+      background-color black
+      opacity 0.5
+    .winner-mask-text-wrap
+      position absolute
+      width 80%
+      height 100%
+      left 10%
+      top 0
+      img
+        width 64px
+        height 64px
+      .txt
+        text-align center
+        color #ffffff
+        font-weight bold
+        font-size 20px
+        line-height 100%
+
+.winner-title
+  font-size 18px

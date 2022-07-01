@@ -307,6 +307,10 @@ module.exports = app => ({
         info.push({text: '你今晚袭击了', level: 1})
         info.push({text: $support.getPlayerFullName(assaultPlayer), level: 2})
         return $helper.wrapResult(true, info)
+      } else {
+        let info = []
+        info.push({text: '请确认您的同伴，并讨论要袭击的玩家', level: 3})
+        return $helper.wrapResult(true, info)
       }
       return $helper.wrapResult(true, [])
     } else if ((gameInstance.stage === 3 || gameInstance.stage === 4) && currentPlayer.role === 'wolf') {
@@ -391,7 +395,7 @@ module.exports = app => ({
         let votePlayer = await $service.baseService.queryOne(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, username: voteAction.to})
         let info = []
         info.push({text: '你今天投票给', level: 1})
-        info.push({text: $support.getPlayerFullName(votePlayer), level: 1})
+        info.push({text: $support.getPlayerFullName(votePlayer), level: 2})
         return $helper.wrapResult(true, info)
       }
       return $helper.wrapResult(true, [])
@@ -434,7 +438,7 @@ module.exports = app => ({
    * @returns {Promise<{result}>}
    */
   async settleGameOver (ctx, id) {
-    const { $service, $helper, $model } = app
+    const { $service, $helper, $model, $ws } = app
     const { game, player, record } = $model
     if(!id){
       return $helper.wrapResult(false, 'gameId为空！', -1)
@@ -455,6 +459,9 @@ module.exports = app => ({
         content: '游戏结束！狼人阵营赢得胜利！'
       }
       await $service.baseService.save(record, recordObject)
+      $ws.connections.forEach(function (conn) {
+        conn.sendText('gameOver')
+      })
       return $helper.wrapResult(true , 'Y')
     }
 
@@ -478,6 +485,9 @@ module.exports = app => ({
         content: '游戏结束！狼人阵营赢得胜利！'
       }
       await $service.baseService.save(record, recordObject)
+      $ws.connections.forEach(function (conn) {
+        conn.sendText('gameOver')
+      })
       return $helper.wrapResult(true , 'Y')
     }
 
@@ -496,6 +506,9 @@ module.exports = app => ({
         content: '游戏结束！好人阵营赢得胜利！'
       }
       await $service.baseService.save(record, recordObject)
+      $ws.connections.forEach(function (conn) {
+        conn.sendText('gameOver')
+      })
       return $helper.wrapResult(true , 'Y')
     }
     // 游戏未结束

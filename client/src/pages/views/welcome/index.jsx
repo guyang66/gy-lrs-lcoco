@@ -241,6 +241,7 @@ const Index = (props) => {
         maskStyle={{
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
+        width="300px"
         visible={createRoomModal}
         onOk={createRoom}
         okText="确定"
@@ -275,6 +276,7 @@ const Index = (props) => {
         }}
         visible={joinRoomModal}
         onOk={joinRoom}
+        width="300px"
         okText="确认"
         cancelText="取消"
         onCancel={() => {
