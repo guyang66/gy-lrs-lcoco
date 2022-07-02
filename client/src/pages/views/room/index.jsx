@@ -39,14 +39,11 @@ const Index = (props) => {
   const [actionInfo, setActionInfo] = useState([])
 
   const [seat, setSeat] = useState([])
-
   const [kick, setKick] = useState(false)
 
   const [errorPage, setErrorPage] = useState(false)
-
   const [modifyModal, setModifyModal] = useState(false)
   const [newName, setNewName] = useState(null)
-
 
   const [recordModal, setRecordModal] = useState(false)
   const [gameRecord, setGameRecord] = useState([])
@@ -71,10 +68,10 @@ const Index = (props) => {
   const [shootPlayer, setShootPlayer] = useState([])
   const [shootResult, setShootResult] = useState(null)
 
-  const [winner, setWinner] = useState({})
-
   const [socketOn,setSocketOn] = useState(true)
 
+  const [roleCard, setRoleCard] = useState(null)
+  const [winCard, setWinCard] = useState(null)
 
   useEffect(()=>{
     getRoomDetail()
@@ -479,7 +476,7 @@ const Index = (props) => {
   const poisonPlayerAction = (item)=> {
     confirm(
       {
-        title: '确定要毒杀该玩家吗？',
+        title: '确定撒毒该玩家吗？',
         okText: '确定',
         cancelText: '取消',
         onOk() {
@@ -555,7 +552,6 @@ const Index = (props) => {
   const openRoleCard = (roleInfo) => {
     let src = roleCardMap[currentRole.role]
     if(roleInfo){
-      console.log(roleInfo)
       src = roleCardMap[roleInfo.role]
     }
     const config = {
@@ -568,9 +564,9 @@ const Index = (props) => {
         </div>
       )
     }
-    info(config)
+    let roleCardView = info(config)
+    setRoleCard(roleCardView)
   }
-
 
   const gameDestroy = () => {
     confirm(
@@ -587,8 +583,22 @@ const Index = (props) => {
     )
   }
 
+  const gameAgain = () => {
+    confirm(
+      {
+        title: '确定要再来一句游戏吗？',
+        okText: '确定',
+        cancelText: '取消',
+        onOk() {
+          apiConfig.gameAgain({roomId: roomId, gameId: gameDetail._id}).then(data=>{
+            message.success('创建成功！')
+          })
+        }
+      }
+    )
+  }
+
   const showWinner = (data) => {
-    console.log(data)
     const config = {
       okText: '确定',
       icon: null,
@@ -611,7 +621,7 @@ const Index = (props) => {
                   <div className="winner-mask" />
                   <div className="winner-mask-text-wrap FBV FBAC FBJC">
                     <img src={loser} />
-                    <div className="txt mar-t10">你输了~</div>
+                    <div className="txt mar-t10">很遗憾，你输了~</div>
                   </div>
                 </>
               )
@@ -620,7 +630,8 @@ const Index = (props) => {
         </div>
       )
     }
-    info(config)
+    let winCardView = info(config)
+    setWinCard(winCardView)
   }
 
   const wsMessage = (msg) => {
@@ -645,10 +656,44 @@ const Index = (props) => {
         setShootModal(false)
         setPoisonModal(false)
         setVoteModal(false)
-
-        setWinner(data)
         showWinner(data)
       })
+    } else if (msg === 'reStart'){
+      setAssaultModal(false)
+      setRecordModal(false)
+      setModifyModal(false)
+      setCheckModal(false)
+      setShootModal(false)
+      setPoisonModal(false)
+      setVoteModal(false)
+      setGameDetail({})
+      setPlayerInfo([])
+      setCurrentRole({})
+      setSkillInfo([])
+      setActionInfo([])
+      setGameRecord([])
+      setCheckPlayer([])
+      setCheckResult(null)
+      setAssaultPlayer([])
+      setAssaultResult(null)
+      setVotePlayer([])
+      setVoteResult(null)
+      setPoisonPlayer([])
+      setPoisonResult(null)
+      setShootPlayer([])
+      setShootResult(null)
+      if(winCard){
+        winCard.destroy()
+      }
+      console.log('生个')
+      console.log(roleCard)
+      if(roleCard){
+        console.log(roleCard)
+        roleCard.destroy()
+      }
+      if(socketOn){
+        getRoomDetail()
+      }
     }
   }
 
@@ -802,8 +847,30 @@ const Index = (props) => {
                   <div className="mar-l5">-</div>
                   <div className="color-red mar-l5">{gameDetail.dayTag}</div>
                   <div className="mar-l5">-</div>
-                  <div className="color-main mar-l5">{'第' + (gameDetail.stage + 1) + '阶段：'}</div>
-                  <div className="color-red">{gameDetail.stageName}</div>
+                  <div className="color-main mar-l5">{'第' + (gameDetail.stage + 1) + '阶段'}</div>
+                  <div className="color-orange">{'（' + gameDetail.stageName + '）'}</div>
+
+                </div>
+                <div className="game-info mar-b10">
+                  <div className="txt">
+                    {
+                      (gameDetail.broadcast || []).map((item,index)=>{
+                        return (
+                          <span
+                            key={item.text + index}
+                            className={cls({
+                              'color-black': item.level === 1,
+                              'color-red': item.level === 2,
+                              'color-success': item.level === 3,
+                              'color-main': item.level === 4,
+                            })}
+                          >
+                            {item.text}
+                          </span>
+                        )
+                      })
+                    }
+                  </div>
                 </div>
                 {
                   (playerInfo || []).map(item=>{
@@ -832,11 +899,11 @@ const Index = (props) => {
                               (item.role !== null && item.role !== undefined) ? (
                                 <div className={cls({
                                     'tag role-name': true,
-                                    'role-bg-wolf': item.role === 'wolf',
-                                    'role-bg-villager': item.role === 'villager',
-                                    'role-bg-predictor': item.role === 'predictor',
-                                    'role-bg-witch': item.role === 'witch',
-                                    'role-bg-hunter': item.role === 'hunter'
+                                    'bg-black': item.role === 'wolf',
+                                    'bg-green': item.role === 'villager',
+                                    'bg-gold': item.role === 'predictor',
+                                    'bg-purple': item.role === 'witch',
+                                    'bg-brown': item.role === 'hunter'
                                   })}>{item.roleName}</div>
                               ) : null
                             }
@@ -863,47 +930,32 @@ const Index = (props) => {
               </div>
 
               <div className="mar-t10">
-                <div className="bc-title mar-b5 color-red">公告</div>
-                <div className="notice-content FBV FBJC FBAC">
-                  <div className="txt">
-                    {
-                      (gameDetail.broadcast || []).map((item,index)=>{
-                        return (
-                          <span
-                            key={item.text + index}
-                            className={cls({
-                              'color-black': item.level === 1,
-                              'color-red': item.level === 2,
-                              'color-success': item.level === 3,
-                              'color-main': item.level === 4,
-                            })}
-                          >
+                <div className="bc-title mar-b5 color-red">游戏小贴士</div>
+                {
+                  (gameDetail.systemTip && gameDetail.systemTip.length > 0) ? (
+                    <div className="notice-content FBV FBJC FBAC">
+                      <div className="txt mar-t5">
+                        {
+                          (gameDetail.systemTip || []).map((item, index)=>{
+                            return (
+                              <span
+                                key={item.text + index}
+                                className={cls({
+                                  'color-black': item.level === 1,
+                                  'color-red': item.level === 2,
+                                  'color-success': item.level === 3,
+                                  'color-main': item.level === 4,
+                                })}
+                              >
                             {item.text}
                           </span>
-                        )
-                      })
-                    }
-                  </div>
-                  <div className="txt mar-t10">
-                    {
-                      (gameDetail.systemTip || []).map((item, index)=>{
-                        return (
-                          <span
-                            key={item.text + index}
-                            className={cls({
-                              'color-black': item.level === 1,
-                              'color-red': item.level === 2,
-                              'color-success': item.level === 3,
-                              'color-main': item.level === 4,
-                            })}
-                          >
-                            {item.text}
-                          </span>
-                        )
-                      })
-                    }
-                  </div>
-                </div>
+                            )
+                          })
+                        }
+                      </div>
+                    </div>
+                  ) : null
+                }
               </div>
               {
                 gameDetail.status === 1 ? (
@@ -964,20 +1016,32 @@ const Index = (props) => {
             </div>
           ) : null
         }
-
-        <div
-          onClick={()=>{getRoomDetail()}}
-          className="btn-tag btn-refresh">
-          刷新页面
-        </div>
-
         {
-          helper.hasCPermission('system.host', appStore) && gameDetail.status === 1 ? (
-            <div
-              onClick={()=>{nextStage()}}
-              className="btn-warning btn-next-stage">
-              下一阶段
-            </div>
+          <div
+            onClick={()=>{getRoomDetail()}}
+            className="btn-tag btn-refresh">
+            刷新页面
+          </div>
+        }
+        {
+          helper.hasCPermission('system.host', appStore) && gameDetail._id? (
+            <>
+              {
+                gameDetail.status === 1 ? (
+                  <div
+                    onClick={()=>{nextStage()}}
+                    className="btn-warning btn-next-stage">
+                    下一阶段
+                  </div>
+                ) : (
+                  <div
+                    onClick={()=>{gameAgain()}}
+                    className="btn-success btn-next-stage">
+                    再来一局
+                  </div>
+                )
+              }
+            </>
           ) : null
         }
       </div>
@@ -1118,8 +1182,8 @@ const Index = (props) => {
                       (item.camp !== null && item.camp !== undefined) ? (
                         <div className={cls({
                           'camp-tag': true,
-                          'camp-tag-good': item.camp === 1,
-                          'camp-tag-wolf': item.camp !== 1
+                          'bg-green': item.camp === 1,
+                          'bg-red': item.camp !== 1
                         })}>
                           {item.camp === 1 ? '好人阵营' : '狼人阵营'}
                         </div>
@@ -1203,8 +1267,8 @@ const Index = (props) => {
                       (item.camp !== null && item.camp !== undefined) ? (
                         <div className={cls({
                           'camp-tag': true,
-                          'camp-tag-good': item.camp === 1,
-                          'camp-tag-wolf': item.camp !== 1
+                          'bg-green': item.camp === 1,
+                          'bg-red': item.camp !== 1
                         })}>
                           {item.roleName}
                         </div>
@@ -1445,8 +1509,8 @@ const Index = (props) => {
                       (item.camp !== null && item.camp !== undefined) ? (
                         <div className={cls({
                           'camp-tag': true,
-                          'camp-tag-good': item.camp === 1,
-                          'camp-tag-wolf': item.camp !== 1
+                          'bg-green': item.camp === 1,
+                          'bg-red': item.camp !== 1
                         })}>
                           {item.roleName}
                         </div>

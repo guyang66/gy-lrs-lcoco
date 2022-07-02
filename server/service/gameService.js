@@ -118,9 +118,11 @@ module.exports = app => ({
         if(poisonAction){
           useStatus = false
         }
-        if(gameInstance.day !== 1 && killAction.to === currentPlayer.username){
+        if(killAction && gameInstance.day !== 1){
           // 首页之后不能自救
-          useStatus = false
+          if(currentPlayer.username === killAction.to){
+            useStatus = false
+          }
         }
         tmp.push({
           key: item.key,
@@ -250,7 +252,7 @@ module.exports = app => ({
       let order = await $service.baseService.queryOne(gameTag,{roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, mode: 2})
       let info = []
       info.push({text:'进入发言环节，从', level: 1})
-      info.push({text: '' + order.position + '号玩家（' + order.target + '）', level:2})
+      info.push({text: '' + order.position + '号玩家（' + order.name + '）', level:2})
       info.push({text:'开始发言，顺序为：', level: 1})
       info.push({text:order.value === 'asc' ? '正向' : '逆向', level: 2})
       return $helper.wrapResult(true, info)
@@ -262,7 +264,6 @@ module.exports = app => ({
 
     if(gameInstance.stage === 7){
       let voteTag = await $service.baseService.queryOne(gameTag,{roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage: 6, mode: 1})
-
       if(!voteTag){
         let info = []
         info.push({text:'平票，今天没有玩家出局，没有遗言', level: 1})
@@ -343,7 +344,7 @@ module.exports = app => ({
       if(!killAction){
         let info = []
         info.push({text: '你们', level: 1})
-        info.push({text: '狼人', level: 2})
+        info.push({text: '狼人团队', level: 2})
         info.push({text: '晚上没有袭击玩家', level: 1})
         return $helper.wrapResult(true, info)
       }
@@ -411,6 +412,19 @@ module.exports = app => ({
         let info = []
         info.push({text: '你已', level: 1})
         info.push({text: '出局', level: 2})
+
+        let skills = currentPlayer.skill
+        let skill
+        skills.forEach(item=>{
+          if(item.key === 'shoot'){
+            skill = item
+            return
+          }
+        })
+        if(skill && skill.status === 0){
+          // 使用过技能了
+          return $helper.wrapResult(true, info)
+        }
         if(currentPlayer.outReason !== 'poison'){
           info.push({text: '，你现在可以', level: 1})
           info.push({text: '发动技能', level: 3})

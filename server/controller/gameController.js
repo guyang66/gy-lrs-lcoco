@@ -467,41 +467,17 @@ module.exports = app => ({
           await $service.baseService.save(record, recordObject)
         }
       }
-
-    }else if(nextStage === 7){
-      // 结算游戏是否结束,狼人先发动技能，先查看好人阵营存活状态
-
-      let wolfAlive = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, role: 'wolf', status: 1})
-      if(!wolfAlive || wolfAlive.length < 1){
-        // 狼人死完 => 游戏结束，好人胜利
-        await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: 1})
-      }
-
-      let villagerAlive = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, role: 'villager', status: 1})
-      if(!villagerAlive || villagerAlive.length < 1){
-        // 屠边 - 村民 => 游戏结束，狼人胜利
-        await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: 0})
-      }
-
-      let clericAlive = await $service.baseService.query(player,{
-        gameId: gameInstance._id,
-        roomId: gameInstance.roomId,
-        role: { $in: ['predictor', 'witch', 'hunter']},
-        status: 1
-      })
-      if(!clericAlive || clericAlive.length < 1){
-        // 屠边 - 屠神 => 游戏结束，狼人胜利
-        await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: 0})
-      }
+      await $service.gameService.settleGameOver(ctx, gameInstance._id)
     }
 
     let update = {stage: nextStage}
     if(nextStage === 0){
       update.day = gameInstance.day + 1
+
       let recordObject = {
         roomId: roomId,
         gameId: gameInstance._id,
-        day: gameInstance.day,
+        day: gameInstance.day + 1,
         stage: gameInstance.stage,
         view: [],
         isCommon: 1,
@@ -763,26 +739,10 @@ module.exports = app => ({
       stage: gameInstance.stage,
       from: currentPlayer.username,
       to: targetPlayer.username,
-      // 'assault': '狼人袭击' , 'check': '预言家查验', 'antidote':女巫解药, 'poison':'女巫毒药', 'shoot': '猎人开枪'，'boom'：狼人自爆；'vote': '投票流放'
       action: 'assault',
     }
     await $service.baseService.save(action, actionObject)
 
-    // 修改skill为不能使用，等下一个天黑再变为可使用。
-    // await $service.baseService.updateById(player, currentPlayer._id, {
-    //   skill: [
-    //     {
-    //       name: '袭击',
-    //       key: 'assault',
-    //       status: 0,
-    //     },{
-    //       name: '自爆',
-    //       key: 'boom',
-    //       status: 1,
-    //     }
-    //   ]
-    // })
-    // 某个狼人完成了击杀，不需要通知刷新状态，等待这回合结束，再结算真正死亡的是谁。
     let r = {
       username: targetPlayer.username,
       name: targetPlayer.name,
@@ -1297,9 +1257,23 @@ module.exports = app => ({
     // 判断游戏结束没有 todo: 游戏结束还有后续流程没走完
     await $service.gameService.settleGameOver(ctx, gameInstance._id)
 
+    // 增加record
+    let recordObjectNight = {
+      roomId: roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day + 1,
+      stage: gameInstance.stage,
+      view: [],
+      isCommon: 1,
+      isTitle: 0,
+      content: '天黑请闭眼。'
+    }
+    await $service.baseService.save(record, recordObjectNight)
+
     // 修改阶段
     let update = {stage: 0, day: gameInstance.day + 1}
     await $service.baseService.updateById(game, gameInstance._id, update)
+
     $ws.connections.forEach(function (conn) {
       let url = '/lrs/' + gameInstance.roomId
       if(conn.path === url){
@@ -1373,6 +1347,44 @@ module.exports = app => ({
       let url = '/lrs/' + gameInstance.roomId
       if(conn.path === url){
         conn.sendText('refreshGame')
+      }
+    })
+    ctx.body = $helper.Result.success('ok')
+  },
+
+  async gameAgain (ctx) {
+    const { $service, $helper, $model, $ws } = app
+    const { game, record, room } = $model
+    const { roomId, gameId } = ctx.query
+    if(!roomId || roomId === ''){
+      ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
+      return
+    }
+    if(!gameId || gameId === ''){
+      ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
+      return
+    }
+    let roomInstance = await $service.baseService.queryById(room, roomId)
+    if(!roomInstance){
+      ctx.body = $helper.Result.fail(-1,'房间不存在！')
+      return
+    }
+    let gameInstance = await $service.baseService.queryById(game, gameId)
+    if(!gameInstance){
+      ctx.body = $helper.Result.fail(-1,'游戏不存在！')
+      return
+    }
+
+    // 重置掉当前局
+    let update = {
+      status: 0,
+      gameId: null
+    }
+    await $service.baseService.updateById(room, roomInstance._id,update)
+    $ws.connections.forEach(function (conn) {
+      let url = '/lrs/' + roomInstance._id
+      if(conn.path === url){
+        conn.sendText('reStart')
       }
     })
     ctx.body = $helper.Result.success('ok')

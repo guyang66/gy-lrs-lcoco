@@ -186,5 +186,13 @@ export default {
       method: 'get',
       params,
     })
-  }
+  },
+
+  gameAgain  (params) {
+    return fetch({
+      url: urlPrefix + 'game/again/auth',
+      method: 'get',
+      params,
+    })
+  },
 }

@@ -10,7 +10,7 @@
     overflow hidden
     .room-content,.game-content
       padding 20px
-      height calc(100% - 120px)
+      min-height calc(100% - 120px)
       overflow-y scroll
       // 遮住滚动条
       width calc(100% + 20px)
@@ -56,7 +56,6 @@
         border-radius 4px
         border 1px solid #eeeeee
         overflow hidden
-        height 220px
         width 100%
         position relative
         padding 5px
@@ -97,6 +96,20 @@
             .kick-btn,.kick-btn:focus,.kick-btn:hover,.kick-btn:after
               border none
               box-shadow none!important
+        .game-info
+          text-align center
+          overflow hidden
+          position relative
+          display flex
+          width 100%
+          flex-wrap wrap
+          .txt
+            line-height 24px
+            color black
+            font-weight 500
+            width 100%
+            font-style oblique
+            font-size 16px
       .full-btn
         width 100%
     .game-content
@@ -107,7 +120,6 @@
         border-radius 4px
         border 1px solid #eeeeee
         overflow hidden
-        height 340px
         position relative
         padding 5px
         flex-wrap wrap
@@ -174,8 +186,7 @@
         border-radius 4px
         text-align center
         overflow hidden
-        max-height 180px
-        min-height 60px
+        min-height 100px
         position relative
         border 1px solid #eeeeee
         display flex
@@ -196,30 +207,6 @@
         .vote-icon
           width 24px
           height 24px
-      .role-bg-wolf
-        background-color black
-      .role-bg-villager
-        background-color #67c23a
-      .role-bg-predictor
-        background-color gold
-      .role-bg-witch
-        background-color purple
-      .role-bg-hunter
-        background-color #c28164
-      .role-txt-wolf
-        color red
-      .role-txt-villager
-        color #67c23a
-      .role-txt-predictor
-        color gold
-      .role-txt-witch
-        color purple
-      .role-txt-hunter
-        color #c28164
-      .role-txt-camp-good
-        color #67c23a
-      .role-txt-camp-wolf
-        color red
     .header
       width 100%
       box-shadow 0 2px 4px rgba(0,21,41,.08)
@@ -349,10 +336,6 @@
           text-align center
           font-weight 500
           color #ffffff
-        .camp-tag-good
-          background-color #67c23a
-        .camp-tag-wolf
-          background-color red
       .check-item
         background-color #b8f1ed
       .normal-item
