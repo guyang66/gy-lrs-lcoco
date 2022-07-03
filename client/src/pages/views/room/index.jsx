@@ -2,7 +2,9 @@ import React, {useState, useEffect} from "react";
 import "./index.styl";
 import {inject, observer} from "mobx-react";
 import RoleView from "@components/playerRoleInfo";
-import apiConfig from '@api/config'
+import apiGame from '@api/game'
+import apiRoom from '@api/room'
+
 import {withRouter} from "react-router-dom";
 import Websocket from 'react-websocket';
 import predictor from "@assets/images/role/card/yuyanjia.webp"
@@ -12,6 +14,24 @@ import villager from "@assets/images/role/card/pingming.webp"
 import wolf from "@assets/images/role/card/langren.webp"
 import vote from "@assets/images/role/skill/vote.svg"
 import loser from "@assets/images/shibai.svg"
+
+import arrow3 from "@assets/images/arrow-green.svg"
+import arrow2 from "@assets/images/arrow-red.svg"
+import arrow4 from "@assets/images/arrow-blue.svg"
+import arrow5 from "@assets/images/arrow-pink.svg"
+import arrow6 from "@assets/images/arrow-orange.svg"
+
+import emptyIcon from "@assets/images/empty.svg"
+
+import predictorIcon from "@assets/images/role/icon/yyj.png"
+import witchIcon from "@assets/images/role/icon/nw.png"
+import hunterIcon from "@assets/images/role/icon/lr.png"
+import villagerIcon from "@assets/images/role/icon/pm.png"
+import wolfIcon from "@assets/images/role/icon/langr.png"
+import exileIcon from "@assets/images/exile.svg"
+import outIcon from "@assets/images/dead.svg"
+import boomIcon from "@assets/images/boom.svg"
+
 import {Button, Modal, Input, message} from "antd";
 const { confirm, info } = Modal;
 import helper from '@helper'
@@ -29,6 +49,25 @@ const Index = (props) => {
     'witch': witch,
     'villager': villager,
     'wolf': wolf,
+  }
+
+  const roleIconMap = {
+    'villager': villagerIcon,
+    'predictor': predictorIcon,
+    'wolf': wolfIcon,
+    'witch': witchIcon,
+    'hunter': hunterIcon,
+    'exile': exileIcon,
+    'boom': boomIcon,
+    'out': outIcon
+  }
+
+  const arrowIconMap = {
+    2: arrow2,
+    3: arrow3,
+    4: arrow4,
+    5: arrow5,
+    6: arrow6
   }
 
   const [roomDetail, setRoomDetail] = useState({})
@@ -78,8 +117,7 @@ const Index = (props) => {
   },[])
 
   const getRoomDetail = (isBegin) => {
-    apiConfig.getRoomInfo({id: roomId}).then(data=>{
-      console.log(data)
+    apiRoom.getRoomInfo({id: roomId}).then(data=>{
       setRoomDetail(data)
       if(data.status === 0){
         initSeat(data)
@@ -87,19 +125,18 @@ const Index = (props) => {
         initGame(data.gameId, data._id, isBegin)
       }
     }).catch(error=>{
-      console.log('发生了错误！',error)
+      console.log('获取房间信息失败！',error)
       setErrorPage(true)
     })
   }
 
   const initGame = (gameId, roomId, isBegin) => {
     if(!gameId){
-      console.log('前端：游戏id不存在')
+      console.log('initGame失败：gameId不存在')
       message.warn('游戏id不存在！')
       return
     }
-    apiConfig.getGameInfo({id: gameId, roomId: roomId}).then(data=>{
-      console.log(data)
+    apiGame.getGameInfo({id: gameId, roomId: roomId}).then(data=>{
       setGameDetail(data)
       setCurrentRole(data.roleInfo || {})
       setPlayerInfo(data.playerInfo || [])
@@ -115,7 +152,7 @@ const Index = (props) => {
   }
 
   const seatIn = (index) => {
-    apiConfig.seatIn({id: roomId, position: index}).then(data=>{
+    apiRoom.seatIn({id: roomId, position: index}).then(data=>{
       message.success('入座成功！')
     })
   }
@@ -144,13 +181,11 @@ const Index = (props) => {
         })
       }
       // 排序
-
       p.sort(function (a,b){
         return a.key - b.key
       })
       setSeat(p)
     }
-
   }
 
   const kickPlayer = (item) => {
@@ -163,7 +198,7 @@ const Index = (props) => {
       return
     }
 
-    apiConfig.kickPlayer({id: roomId, position: item.key}).then(data=>{
+    apiRoom.kickPlayer({id: roomId, position: item.key}).then(data=>{
       message.success('踢人成功！')
       setKick(false)
     })
@@ -174,7 +209,7 @@ const Index = (props) => {
       message.warn('新昵称不能为空！')
       return
     }
-    apiConfig.modifyNameInRoom({id: user._id, roomId: roomId, name: newName}).then(data=>{
+    apiRoom.modifyNameInRoom({id: user._id, roomId: roomId, name: newName}).then(data=>{
       message.success('修改成功！')
       setModifyModal(false)
       setNewName(null)
@@ -182,7 +217,7 @@ const Index = (props) => {
   }
 
   const startGame = () => {
-    apiConfig.startGame({id: roomId}).then(data=>{
+    apiGame.startGame({id: roomId}).then(data=>{
     })
   }
 
@@ -192,7 +227,7 @@ const Index = (props) => {
       return
     }
     setSocketOn(false)
-    apiConfig.quitRoom({id: roomId, username: user.username}).then(data=>{
+    apiRoom.quitRoom({id: roomId, username: user.username}).then(data=>{
       history.push({pathname: '/index'})
     }).catch(()=>{
       setSocketOn(true)
@@ -206,7 +241,7 @@ const Index = (props) => {
         okText: '确定',
         cancelText: '取消',
         onOk() {
-          apiConfig.nextStage({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+          apiGame.nextStage({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
             message.success('操作成功！')
           })
         }
@@ -228,13 +263,13 @@ const Index = (props) => {
   }
 
   const userNextStageAction = (gameInfo, roleInfo) => {
-    apiConfig.userNextStage({roomId: gameDetail.roomId, gameId: gameDetail._id, role: roleInfo.role}).then(data=>{
+    apiGame.userNextStage({roomId: gameDetail.roomId, gameId: gameDetail._id, role: roleInfo.role}).then(data=>{
       message.success('操作成功！')
     })
   }
 
   const lookRecord = () => {
-    apiConfig.gameRecord({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+    apiGame.gameRecord({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
       console.log(data)
       initRecordList(data)
     })
@@ -366,7 +401,7 @@ const Index = (props) => {
       message.warn('你不是狼人，不能进行自爆操作！')
       return
     }
-    apiConfig.boomAction({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+    apiGame.boomAction({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
       message.success('自爆成功')
     })
   }
@@ -388,7 +423,7 @@ const Index = (props) => {
       message.warn('你不是女巫，不能进行此操作！')
       return
     }
-    apiConfig.antidotePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+    apiGame.antidotePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
       message.success('操作成功')
       initGame(gameDetail._id, roomDetail._id)
     })
@@ -401,7 +436,7 @@ const Index = (props) => {
         okText: '确定',
         cancelText: '取消',
         onOk() {
-          apiConfig.votePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: item.username}).then(data=>{
+          apiGame.votePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: item.username}).then(data=>{
             console.log(data)
             setVoteResult({...data, prompt: '投票结束，等待其他人的投票结果，由主持人确认完毕之后进入下一阶段'})
             let newVotePlayer = JSON.parse(JSON.stringify(votePlayer))
@@ -429,7 +464,7 @@ const Index = (props) => {
       return
     }
     let username = item.username
-    apiConfig.assaultPlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
+    apiGame.assaultPlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
       console.log(data)
       setAssaultResult({...data, prompt: '袭击完成后，确认队友完成之后，点击『下一阶段』按钮或主页面的操作选项中的『进入下一阶段』 进入一下阶段：女巫行动回合'})
       let newAssaultPlayer = JSON.parse(JSON.stringify(assaultPlayer))
@@ -454,7 +489,7 @@ const Index = (props) => {
       return
     }
     let username = item.username
-    apiConfig.checkPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
+    apiGame.checkPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
       console.log(data)
       setCheckResult({...data, prompt: '记住你的查验信息后，点击『下一阶段』按钮或主页面的操作选项中的『进入下一阶段』 进入一下阶段：狼人行动回合'})
       let newCheckPlayer = JSON.parse(JSON.stringify(checkPlayer))
@@ -505,7 +540,7 @@ const Index = (props) => {
       return
     }
     let username = item.username
-    apiConfig.shootPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
+    apiGame.shootPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
       console.log(data)
       setShootResult({...data, prompt: ''})
       let newShootPlayer = JSON.parse(JSON.stringify(shootPlayer))
@@ -530,7 +565,7 @@ const Index = (props) => {
       return
     }
     let username = item.username
-    apiConfig.poisonPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
+    apiGame.poisonPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
       console.log(data)
       setPoisonResult({...data, prompt: '点击『下一阶段』按钮或主页面的操作选项中的『进入下一阶段』 进入一下阶段：天亮了'})
       let newPoisonPlayer = JSON.parse(JSON.stringify(poisonPlayer))
@@ -575,7 +610,7 @@ const Index = (props) => {
         okText: '确定',
         cancelText: '取消',
         onOk() {
-          apiConfig.gameDestroy({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+          apiGame.gameDestroy({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
             message.success('操作成功')
           })
         }
@@ -590,7 +625,7 @@ const Index = (props) => {
         okText: '确定',
         cancelText: '取消',
         onOk() {
-          apiConfig.gameAgain({roomId: roomId, gameId: gameDetail._id}).then(data=>{
+          apiGame.gameAgain({roomId: roomId, gameId: gameDetail._id}).then(data=>{
             message.success('创建成功！')
           })
         }
@@ -647,7 +682,7 @@ const Index = (props) => {
     } else if (msg === 'gameStart'){
       getRoomDetail(true)
     } else if (msg === 'gameOver') {
-      apiConfig.gameResult({id: gameDetail._id}).then(data=>{
+      apiGame.gameResult({id: gameDetail._id}).then(data=>{
         // 关闭所有的弹窗
         setAssaultModal(false)
         setRecordModal(false)
@@ -685,10 +720,7 @@ const Index = (props) => {
       if(winCard){
         winCard.destroy()
       }
-      console.log('生个')
-      console.log(roleCard)
       if(roleCard){
-        console.log(roleCard)
         roleCard.destroy()
       }
       if(socketOn){
@@ -1109,10 +1141,188 @@ const Index = (props) => {
                           <div
                             className={cls({
                               'record-cell': true,
-                              'cell-title': record.isTitle
                             })}
                             key={'record' + index}>
-                            {record.content}
+                            {
+                              record.content.type === 'text' ? (
+                                <div className={cls({
+                                  'cell-title': record.isTitle,
+                                  'cell-normal': !record.isTitle,
+                                  'color-red': record.content.level === 2,
+                                  'color-green': record.content.level === 3,
+                                  'color-blue': record.content.level === 4,
+                                  'color-pink': record.content.level === 5,
+                                  'color-orange': record.content.level === 6,
+                                })}>{record.content.text}</div>
+                              ) : null
+                            }
+                            {
+                              record.content.type === 'rich-text' ? (
+                                <div className="FBH FBAC">
+                                  {
+                                    (record.content.content || []).map((itm, index)=>{
+                                      return (
+                                        <div key={'itd'+ index} className={cls({
+                                          'txt': true,
+                                          'color-red': itm.level === 2,
+                                          'color-green': itm.level === 3,
+                                          'color-blue': itm.level === 4,
+                                          'color-pink': itm.level === 5,
+                                          'color-orange': itm.level === 6,
+                                        })}>{itm.text}</div>
+                                      )
+                                    })
+                                  }
+                                </div>
+                              ) : null
+                            }
+                            {
+                              record.content.type === 'action' ? (
+                                <div className="action-cell FBH FBAC">
+                                  <div className="from-wrap FBAC FBH">
+                                    {
+                                      record.content.from.role ? (
+                                        <img className="icon mar-r5" src={roleIconMap[record.content.from.role]} />
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.position ? (
+                                        <div className="txt">{record.content.from.position + '号'}</div>
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.position ? (
+                                        <div className="txt">{'('}</div>
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.name ? (
+                                        <div className="txt color-main">{record.content.from.name}</div>
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.position ? (
+                                        <div className="txt">{')'}</div>
+                                      ) : null
+                                    }
+                                  </div>
+                                  <div className="action-wrap FBV FBAC FBJE">
+                                    <img className="arrow" src={arrowIconMap[record.content.level]}/>
+                                    <div className={cls({
+                                      'action-name': true,
+                                      'color-red': record.content.level === 2,
+                                      'color-green': record.content.level === 3,
+                                      'color-blue': record.content.level === 4,
+                                      'color-pink': record.content.level === 5,
+                                      'color-orange': record.content.level === 6,
+                                    })}>{record.content.actionName}</div>
+                                  </div>
+                                  <div className="to-wrap FBAC FBH FBJC">
+                                    {
+                                      record.content.to.name ? (
+                                        <>
+                                          {
+                                            record.content.to.role ? (
+                                              <img className="icon mar-r5" src={roleIconMap[record.content.to.role]} />
+                                            ) : null
+                                          }
+                                          {
+                                            record.content.to.position ? (<div className="txt">{record.content.to.position + '号'}</div>) : null
+                                          }
+                                          {
+                                            record.content.to.position ? (<div className="txt">{'('}</div>) : null
+                                          }
+                                          <div className="txt color-main">{record.content.to.name}</div>
+                                          {
+                                            record.content.to.position ? (<div className="txt">{')'}</div>) : null
+                                          }
+                                        </>
+                                      ) : (
+                                        <img className="icon mar-r5" src={emptyIcon} />
+                                      )
+                                    }
+                                  </div>
+                                  {
+                                    record.content.from.status === 0 ? (
+                                      <>
+                                        <div className="dead-grey" />
+                                        <div className="dead-text FBH FBAC FBJC">
+                                          <div className="mar-r40">死</div>
+                                          <div className="mar-l40">亡</div>
+                                        </div>
+                                      </>
+                                    ) : null
+                                  }
+                                </div>
+                              ) : null
+                            }
+                            {
+                              record.content.type === 'vote' ? (
+                                <div className="vote-cell FBH FBAC">
+                                  <div className="from-wrap FBAC FBH">
+                                    {
+                                      record.content.from.role ? (
+                                        <img className="icon mar-r5" src={roleIconMap[record.content.from.role]} />
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.position ? (
+                                        <div className="txt">{record.content.from.position + '号'}</div>
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.position ? (
+                                        <div className="txt">{'('}</div>
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.name ? (
+                                        <div className={cls({
+                                          'txt': true,
+                                          'color-red': record.content.level === 2,
+                                          'color-green': record.content.level === 3,
+                                          'color-blue': record.content.level === 4,
+                                          'color-pink': record.content.level === 5,
+                                          'color-orange': record.content.level === 6,
+                                        })}>{record.content.from.name}</div>
+                                      ) : null
+                                    }
+                                    {
+                                      record.content.from.position ? (
+                                        <div className="txt">{')'}</div>
+                                      ) : null
+                                    }
+                                  </div>
+                                  <div className="action-wrap FBH FBAC">
+                                    <div className={cls({
+                                      'action-name mar-r5': true,
+                                      'color-red': record.content.level === 2,
+                                      'color-green': record.content.level === 3,
+                                      'color-blue': record.content.level === 4,
+                                      'color-pink': record.content.level === 5,
+                                      'color-orange': record.content.level === 6,
+                                    })}>{record.content.actionName}</div>
+                                    <img className="arrow" src={arrowIconMap[record.content.level]}/>
+                                  </div>
+                                  <div className="to-wrap FBAC FBH FBJC">
+                                    {
+                                      record.content.to.name ? (
+                                        <>
+                                          <div className={cls({
+                                            'txt': true,
+                                            'color-red': record.content.level === 2,
+                                            'color-green': record.content.level === 3,
+                                            'color-blue': record.content.level === 4,
+                                            'color-pink': record.content.level === 5,
+                                            'color-orange': record.content.level === 6,
+                                          })}>{record.content.to.name}</div>
+                                        </>
+                                      ) : null
+                                    }
+                                  </div>
+                                </div>
+                              ) : null
+                            }
                           </div>
                         )
                       })
@@ -1128,6 +1338,7 @@ const Index = (props) => {
       <Modal
         title="查验玩家"
         centered
+        closable={false}
         className="modal-view-wrap player-click-modal"
         maskClosable={false}
         maskStyle={{
@@ -1213,6 +1424,7 @@ const Index = (props) => {
       <Modal
         title="袭击玩家"
         centered
+        closable={false}
         className="modal-view-wrap player-click-modal"
         maskClosable={false}
         maskStyle={{
@@ -1298,6 +1510,7 @@ const Index = (props) => {
       <Modal
         title="投票"
         centered
+        closable={false}
         className="modal-view-wrap player-click-modal"
         maskClosable={false}
         maskStyle={{
@@ -1381,6 +1594,7 @@ const Index = (props) => {
       <Modal
         title="使用毒药"
         centered
+        closable={false}
         className="modal-view-wrap player-click-modal"
         maskClosable={false}
         maskStyle={{
@@ -1454,6 +1668,7 @@ const Index = (props) => {
 
       <Modal
         title="开枪"
+        closable={false}
         centered
         className="modal-view-wrap player-click-modal"
         maskClosable={false}

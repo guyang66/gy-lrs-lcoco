@@ -3,7 +3,7 @@ import "./index.styl";
 import {inject, observer} from "mobx-react";
 import {withRouter} from "react-router-dom";
 import apiUser from '@api/user'
-import apiConfig from '@api/config'
+import apiRoom from '@api/room'
 
 import {Button, Modal, Input, Radio, message} from "antd";
 import helper from '@helper'
@@ -62,7 +62,7 @@ const Index = (props) => {
       message.warning('房间名字不能为空！')
       return
     }
-    apiConfig.createRoom({roomName: newRoom}).then(data=>{
+    apiRoom.createRoom({roomName: newRoom}).then(data=>{
       message.success('创建房间成功！')
       setCreateRoomModal(false)
       setNewRoom(null)
@@ -75,7 +75,7 @@ const Index = (props) => {
       message.warning('房间密码不能为空！')
       return
     }
-    apiConfig.joinRoom({key: roomKey}).then(data=>{
+    apiRoom.joinRoom({key: roomKey}).then(data=>{
       message.success('加入房间成功！')
       setJoinRoomModal(false)
       setRoomKey(null)

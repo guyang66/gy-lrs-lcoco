@@ -104,7 +104,11 @@ module.exports = app => ({
     let gameStartRecord = {
       roomId: roomInstance._id,
       gameId: gameInstance._id,
-      content: '游戏开始！',
+      content: {
+        text: '游戏开始！',
+        type: 'text',
+        level: 2,
+      },
       isCommon: 1,
       isTitle: 0
     }
@@ -117,7 +121,11 @@ module.exports = app => ({
     let stageFirstRecord = {
       roomId: roomInstance._id,
       gameId: gameInstance._id,
-      content: '天黑请闭眼。',
+      content: {
+        text: '天黑请闭眼',
+        type: 'text',
+        level: 1,
+      },
       isCommon: 1,
     }
     await $service.baseService.save(record, stageFirstRecord)
@@ -289,7 +297,42 @@ module.exports = app => ({
       // 进入第二天流程
       nextStage = 0
     }
-    if(stage === 2){
+    if( stage === 1){
+      let checkAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 1, action: 'check'})
+      if(!checkAction) {
+        // 空过
+        let predictorPlayer = await $service.baseService.queryOne(player,{roomId: gameInstance.roomId, gameId: gameInstance._id, role: 'predictor'})
+        let recordObject = {
+          roomId: gameInstance.roomId,
+          gameId: gameInstance._id,
+          day: gameInstance.day,
+          stage: gameInstance.stage,
+          view: [],
+          isCommon: 0,
+          isTitle: 0,
+          content: {
+            type: 'action',
+            key: 'jump',
+            text: $support.getPlayerFullName(predictorPlayer) + '，女巫空过',
+            actionName: '空验',
+            level: 6,
+            from: {
+              username: predictorPlayer.username,
+              name: predictorPlayer.name,
+              position: predictorPlayer.position,
+              role: predictorPlayer.role,
+              camp: predictorPlayer.camp,
+              status: predictorPlayer.status
+            },
+            to: {
+              username: null,
+              name: null,
+            }
+          }
+        }
+        await $service.baseService.save(record, recordObject)
+      }
+    } else if(stage === 2){
       // 结算狼人的实际击杀目标
       let settleResult = await $service.stageService.wolfStage(gameInstance._id)
       if(!settleResult.result){
@@ -332,35 +375,74 @@ module.exports = app => ({
         view: [],
         isCommon: 1,
         isTitle: 0,
-        content: '进入投票环节，由' + targetPlayer.position + '号玩家（' + targetPlayer.name + '）开始发言。顺序为：' + (randomOrder === 1 ? '正向' : '逆向')
+        content: {
+          type: 'rich-text',
+          content: [
+            {
+              text: '进入投票环节，由',
+              level: 1,
+            },
+            {
+              text: $support.getPlayerFullName(targetPlayer),
+              level: 4,
+            },
+            {
+              text: '开始发言。顺序为：',
+              level: 1,
+            },
+            {
+              text: randomOrder === 1 ? '正向' : '逆向',
+              level: randomOrder === 1 ? 3 : 2,
+            }
+          ]
+        }
       }
       await $service.baseService.save(record, recordObject)
     } else if (stage === 6) {
       // 投票 => 遗言 ,需要整理票型， 结算死亡玩家
       let voteActions = await $service.baseService.query(action, {roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage: 6, action: 'vote'})
+      let alivePlayer = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1},{}, {sort: { position: 1 }})
 
       let voteResultMap = {}
-      voteActions.forEach(item=>{
+      for(let i = 0; i < voteActions.length; i++){
+        let item = voteActions[i]
         let from = item.from
         let to = item.to
+        let fromPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: from})
         if(voteResultMap[to]){
-          voteResultMap[to].push(from)
+          voteResultMap[to].push({username: from, position: fromPlayer.position})
         } else {
-          voteResultMap[to] = [from]
+          voteResultMap[to] = [{username: from, position: fromPlayer.position}]
+        }
+      }
+
+      // 找弃票玩家
+      let abstainedPlayer = [] // 弃票玩家
+      alivePlayer.forEach(item=>{
+        let exist = voteActions.find(function (vote) {
+          return vote.from === item.username
+        })
+        if(!exist){
+          abstainedPlayer.push(item)
         }
       })
+
       for(let key in voteResultMap){
         let content = voteResultMap[key]
-        let voteResultString = ''
+        // 排序
+        content = content.sort(function (a,b){
+          return a.position - b.position
+        })
+        let votePlayerString = ''
         let toPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: key})
         for(let i =0; i < content.length; i++){
-          let fromPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: content[i]})
+          let fromPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: content[i].username})
           if(i !== 0){
-            voteResultString = voteResultString + '、'
+            votePlayerString = votePlayerString + '、'
           }
-          voteResultString = voteResultString + fromPlayer.position + '号玩家（' + fromPlayer.name + ')'
+          votePlayerString = votePlayerString + fromPlayer.position + '号'
         }
-        voteResultString = voteResultString + '投票给了' + toPlayer.position + '号玩家（' + toPlayer.name + '),共' + content.length + '票'
+        let voteResultString = votePlayerString + '投票给了' + toPlayer.position + '号玩家（' + toPlayer.name + ')'
         let recordObject = {
           roomId: gameInstance.roomId,
           gameId: gameInstance._id,
@@ -369,7 +451,61 @@ module.exports = app => ({
           view: [],
           isCommon: 1,
           isTitle: 0,
-          content: voteResultString
+          content: {
+            type: 'vote',
+            actionName: '投票',
+            text: voteResultString,
+            action: 'vote',
+            level: 4,
+            from: {
+              username: null,
+              name: votePlayerString,
+              position: null,
+              role: null,
+              camp: null
+            },
+            to: {
+              username: toPlayer.username,
+              name: toPlayer.position + '号（共' + content.length + '票）',
+              position: toPlayer.position,
+              role: null,
+              camp: null
+            }
+          }
+        }
+        await $service.baseService.save(record, recordObject)
+      }
+
+      // 处理弃票record
+      if(abstainedPlayer && abstainedPlayer.length > 0){
+        let abstainedString = ''
+        for(let i =0; i < abstainedPlayer.length; i++){
+          if(i !== 0){
+            abstainedString = abstainedString + '、'
+          }
+          abstainedString = abstainedString + abstainedPlayer[i].position + '号'
+        }
+
+        let recordObject = {
+          roomId: gameInstance.roomId,
+          gameId: gameInstance._id,
+          day: gameInstance.day,
+          stage: gameInstance.stage,
+          view: [],
+          isCommon: 1,
+          isTitle: 0,
+          content: {
+            type: 'vote',
+            actionName: '弃票',
+            text: abstainedString + '弃票',
+            action: 'abstained',
+            level: 5,
+            from: {name: abstainedString},
+            to: {
+              name: '弃票',
+              username: null
+            }
+          }
         }
         await $service.baseService.save(record, recordObject)
       }
@@ -383,7 +519,11 @@ module.exports = app => ({
           view: [],
           isCommon: 1,
           isTitle: 0,
-          content: '所有人弃票，没有玩家出局'
+          content: {
+            text: '所有人弃票，没有玩家出局',
+            type: 'text',
+            level: 2,
+          }
         }
         await $service.baseService.save(record, recordObject)
       } else {
@@ -401,7 +541,11 @@ module.exports = app => ({
             view: [],
             isCommon: 1,
             isTitle: 0,
-            content: '所有人弃票，没有玩家出局'
+            content: {
+              text: '所有人弃票，没有玩家出局',
+              type: 'text',
+              level: 2,
+            }
           }
           await $service.baseService.save(record, recordObject)
         } else if(maxCount.length ===  1){
@@ -415,7 +559,24 @@ module.exports = app => ({
             view: [],
             isCommon: 1,
             isTitle: 0,
-            content:  '' + votePlayer.position + '号玩家（' + votePlayer.name + '）获得最高票数，出局！'
+            content: {
+              type: 'action',
+              actionName: '放逐',
+              action: 'out',
+              text: $support.getPlayerFullName(votePlayer) + '获得最高票数，出局！',
+              level: 2,
+              from: {
+                name: votePlayer.name,
+                username: votePlayer.username,
+                position: votePlayer.position,
+                role: votePlayer.role,
+                camp: votePlayer.camp
+              },
+              to: {
+                role: 'exile',
+                name: '放逐出局'
+              }
+            }
           }
           await $service.baseService.save(record, recordObject)
 
@@ -473,7 +634,6 @@ module.exports = app => ({
     let update = {stage: nextStage}
     if(nextStage === 0){
       update.day = gameInstance.day + 1
-
       let recordObject = {
         roomId: roomId,
         gameId: gameInstance._id,
@@ -482,7 +642,11 @@ module.exports = app => ({
         view: [],
         isCommon: 1,
         isTitle: 0,
-        content: '天黑请闭眼。'
+        content: {
+          text: '天黑请闭眼',
+          type: 'text',
+          level: 1,
+        }
       }
       await $service.baseService.save(record, recordObject)
     }
@@ -521,27 +685,63 @@ module.exports = app => ({
     if(gameInstance.status === 1){
       query.isCommon = 1
     }
-    let recordList = await $service.baseService.query(record, query,{},{sort: {id: -1}})
+    //todo:
+    let recordList = await $service.baseService.query(record, query, {} , {sort: {id: -1}})
     let tagMap = {}
+
+    const filterRecord = (record) => {
+      if(record.content.type === 'action'){
+        return Object.assign({},record,{
+          content: {
+            type: record.content.type,
+            text: record.content.text,
+            level: record.content.level,
+            action: record.content.action,
+            actionName: record.content.actionName,
+            from: {
+              username: record.content.from.username,
+              name: record.content.from.name,
+              position: record.content.from.position,
+              role: gameInstance.status === 1 && record.content.from.role !== 'out' && record.content.from.role !== 'exile' && record.content.action !== 'shoot' ? null : record.content.from.role,
+              camp: gameInstance.status === 1 && record.content.from.role !== 'out' && record.content.from.role !== 'exile' && record.content.action !== 'shoot' ? null : record.content.from.camp
+            },
+            to: {
+              username: record.content.to.username,
+              name: record.content.to.name,
+              position: record.content.to.position,
+              role: gameInstance.status === 1 && record.content.to.role !== 'out' && record.content.to.role !== 'exile' ? null : record.content.to.role,
+              camp: gameInstance.status === 1 && record.content.to.role !== 'out' && record.content.to.role !== 'exile' ? null : record.content.to.camp
+            }
+          }
+        })
+      }
+      return record
+    }
     recordList.forEach(item=>{
       let day = item.day
       if(tagMap[day]){
-        tagMap[day].content.push(item)
+        tagMap[day].content.push(filterRecord(item))
       } else {
         let c = []
         if(day !== 0){
           c.push({
             isTitle: 1,
-            content: '第' + day + '天'
+            content: {
+              text: '第' + day + '天',
+              type: 'text',
+              level: 1,
+            }
           })
         }
-        c.push(item)
+        c.push(filterRecord(item))
         tagMap[day] = {
           key: day,
           content: c
         }
       }
     })
+
+
     ctx.body = $helper.Result.success(tagMap)
   },
 
@@ -621,21 +821,9 @@ module.exports = app => ({
       stage: gameInstance.stage,
       from: currentPlayer.username,
       to: targetPlayer.username,
-      // 'assault': '狼人袭击' , 'check': '预言家查验', 'antidote':女巫解药, 'poison':'女巫毒药', 'shoot': '猎人开枪'，'boom'：狼人自爆；'vote': '投票流放'
       action: 'check',
     }
     await $service.baseService.save(action, actionObject)
-
-    // 修改预言家的skill为不能使用，等下一个天黑再变为可使用。
-    // await $service.baseService.updateById(player, currentPlayer._id, {
-    //   skill: [
-    //     {
-    //       "name" : "查验",
-    //       "key" : "check",
-    //       "status" : 0
-    //     }
-    //   ]
-    // })
 
     let targetCamp = targetPlayer.camp
     let targetCampName = targetCamp === 1 ? '好人阵营' : '狼人阵营'
@@ -648,7 +836,27 @@ module.exports = app => ({
       view: [],
       isCommon: 0,
       isTitle: 0,
-      content: '预言家：' + currentPlayer.position + '号玩家（' + currentPlayer.name + '）查验了' + targetPlayer.position + '号玩家（' + targetPlayer.name + '）的身份为：' + targetCampName
+      content: {
+        type: 'action',
+        text: '预言家：' + currentPlayer.position + '号玩家（' + currentPlayer.name + '）查验了' + targetPlayer.position + '号玩家（' + targetPlayer.name + '）的身份为：' + targetCampName,
+        key: 'check',
+        actionName: '查验',
+        level: 3,
+        from: {
+          username: currentPlayer.username,
+          name: currentPlayer.name,
+          position: currentPlayer.position,
+          role: currentPlayer.role,
+          camp: currentPlayer.camp
+        },
+        to: {
+          username: targetPlayer.username,
+          name: targetPlayer.name,
+          position: targetPlayer.position,
+          role: targetPlayer.role,
+          camp: targetPlayer.camp
+        }
+      }
     }
     await $service.baseService.save(record, recordObject)
 
@@ -752,6 +960,11 @@ module.exports = app => ({
     ctx.body = $helper.Result.success(r)
   },
 
+  /**
+   * 使用解药
+   * @param ctx
+   * @returns {Promise<void>}
+   */
   async antidotePlayer (ctx) {
     const { $service, $helper, $model, $support } = app
     const { game, player, record, action } = $model
@@ -839,7 +1052,27 @@ module.exports = app => ({
       view: [],
       isCommon: 0,
       isTitle: 0,
-      content: '女巫——' + $support.getPlayerFullName(currentPlayer) + '使用解药救了：' +   $support.getPlayerFullName(diePlayer)
+      content: {
+        type: 'action',
+        key: 'antidote',
+        text: '女巫——' + $support.getPlayerFullName(currentPlayer) + '使用解药救了：' +   $support.getPlayerFullName(diePlayer),
+        actionName: '解药',
+        level: 3,
+        from: {
+          username: currentPlayer.username,
+          name: currentPlayer.name,
+          position: currentPlayer.position,
+          role: currentPlayer.role,
+          camp: currentPlayer.camp
+        },
+        to: {
+          username: diePlayer.username,
+          name: diePlayer.name,
+          position: diePlayer.position,
+          role: diePlayer.role,
+          camp: diePlayer.camp
+        }
+      },
     }
     await $service.baseService.save(record, recordObject)
 
@@ -1123,7 +1356,27 @@ module.exports = app => ({
       view: [],
       isCommon: 1,
       isTitle: 0,
-      content: '猎人——' + $support.getPlayerFullName(currentPlayer) + '发动技能，开枪带走了'  + $support.getPlayerFullName(targetPlayer)
+      content: {
+        type:'action',
+        text: '猎人——' + $support.getPlayerFullName(currentPlayer) + '发动技能，开枪带走了'  + $support.getPlayerFullName(targetPlayer),
+        action: 'shoot',
+        actionName: '开枪',
+        level: 2,
+        from: {
+          username: currentPlayer.username,
+          name: currentPlayer.name,
+          position: currentPlayer.position,
+          role: currentPlayer.role,
+          camp: currentPlayer.camp
+        },
+        to: {
+          username: targetPlayer.username,
+          name: targetPlayer.name,
+          position: targetPlayer.position,
+          role: targetPlayer.role,
+          camp: targetPlayer.camp
+        }
+      }
     }
     await $service.baseService.save(record, recordObject)
 
@@ -1141,6 +1394,36 @@ module.exports = app => ({
       position: targetPlayer.position
     }
     await $service.baseService.save(gameTag, tagObject)
+
+    //
+    let deadRecord = {
+      roomId: gameInstance.roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      view: [],
+      isCommon: 1,
+      isTitle: 0,
+      content: {
+        type: 'action',
+        action: 'die',
+        actionName: '死亡',
+        level: 2,
+        from: {
+          username: targetPlayer.username,
+          name: targetPlayer.name,
+          position: targetPlayer.position,
+          role: targetPlayer.role,
+          camp: targetPlayer.camp
+        },
+        to: {
+          role: 'out',
+          name: '出局'
+        }
+      }
+    }
+    await $service.baseService.save(record, deadRecord)
+
     await $service.baseService.updateById(player, targetPlayer._id,{status: 0, outReason: 'shoot'})
     await $service.gameService.settleGameOver(ctx, gameInstance._id)
 
@@ -1236,7 +1519,24 @@ module.exports = app => ({
       view: [],
       isCommon: 1,
       isTitle: 0,
-      content:  $support.getPlayerFullName(currentPlayer) + '自爆！'
+      content: {
+        type: 'action',
+        text: $support.getPlayerFullName(currentPlayer) + '自爆！',
+        action: 'boom',
+        actionName: '自爆',
+        level: 2,
+        from: {
+          username: currentPlayer.username,
+          name: currentPlayer.name,
+          position: currentPlayer.position,
+          role: currentPlayer.role,
+          camp: currentPlayer.camp
+        },
+        to: {
+          name: '自爆',
+          role: 'boom'
+        }
+      }
     }
     await $service.baseService.save(record, recordObject)
     // 注册死亡
@@ -1255,24 +1555,29 @@ module.exports = app => ({
     await $service.baseService.save(gameTag, tagObject)
     await $service.baseService.updateById(player, currentPlayer._id,{status: 0, outReason: 'boom'})
     // 判断游戏结束没有 todo: 游戏结束还有后续流程没走完
-    await $service.gameService.settleGameOver(ctx, gameInstance._id)
+    let gameResult = await $service.gameService.settleGameOver(ctx, gameInstance._id)
+    if(gameResult.result && gameResult.data === 'N'){
+      // 游戏未结束，增加record
+      let recordObjectNight = {
+        roomId: roomId,
+        gameId: gameInstance._id,
+        day: gameInstance.day + 1,
+        stage: gameInstance.stage,
+        view: [],
+        isCommon: 1,
+        isTitle: 0,
+        content: {
+          text: '天黑请闭眼。',
+          type: 'text',
+          level: 1
+        }
+      }
+      await $service.baseService.save(record, recordObjectNight)
 
-    // 增加record
-    let recordObjectNight = {
-      roomId: roomId,
-      gameId: gameInstance._id,
-      day: gameInstance.day + 1,
-      stage: gameInstance.stage,
-      view: [],
-      isCommon: 1,
-      isTitle: 0,
-      content: '天黑请闭眼。'
+      // 修改阶段
+      let update = {stage: 0, day: gameInstance.day + 1}
+      await $service.baseService.updateById(game, gameInstance._id, update)
     }
-    await $service.baseService.save(record, recordObjectNight)
-
-    // 修改阶段
-    let update = {stage: 0, day: gameInstance.day + 1}
-    await $service.baseService.updateById(game, gameInstance._id, update)
 
     $ws.connections.forEach(function (conn) {
       let url = '/lrs/' + gameInstance.roomId

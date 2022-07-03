@@ -124,6 +124,9 @@ module.exports = app => ({
             useStatus = false
           }
         }
+        if(!killAction){
+          useStatus = false
+        }
         tmp.push({
           key: item.key,
           name: item.name,
@@ -352,7 +355,7 @@ module.exports = app => ({
       let killPlayer = await $service.baseService.queryOne(player, {gameId: gameInstance._id, roomId: gameInstance.roomId, username: killUsername})
       let info = []
       info.push({text: '你们', level: 1})
-      info.push({text: '狼人', level: 2})
+      info.push({text: '狼人团队', level: 2})
       info.push({text: '晚上袭击了', level: 1})
       info.push({text: $support.getPlayerFullName(killPlayer), level: 3})
       return $helper.wrapResult(true, info)
@@ -375,14 +378,16 @@ module.exports = app => ({
       })
 
       let info = []
-      if(antidoteSkill && antidoteSkill.status === 1){
+      if(antidoteSkill && antidoteSkill.status === 1 && currentPlayer.status === 1){
         info.push({text: '昨晚死亡的是', level: 1})
         info.push({text: $support.getPlayerFullName(diePlayer), level: 2,})
         if(killAction.to === currentPlayer.username && gameInstance.day !== 1){
-          info.push({text: '，女巫非首页不能自救', level: 2,})
+          info.push({text: '，女巫非首页不能自救，', level: 2,})
+        } else {
+          info.push({text: '，', level: 1})
         }
       }
-      info.push({text: '，请选择使用', level: 1})
+      info.push({text: '请选择使用', level: 1})
       info.push({text: '解药', level: 3})
       info.push({text: '或者使用', level: 1})
       info.push({text: '毒药', level: 2})
@@ -501,7 +506,27 @@ module.exports = app => ({
         view: [],
         isCommon: 1,
         isTitle: 0,
-        content: '游戏结束！狼人阵营赢得胜利！'
+        content: {
+          type: 'rich-text',
+          content: [
+            {
+              text: '游戏结束！',
+              level: 1,
+            },
+            {
+              text: '狼人阵营',
+              level: 2,
+            },
+            {
+              text: '赢得',
+              level: 1,
+            },
+            {
+              text: '胜利！',
+              level: 3,
+            },
+          ]
+        }
       }
       await $service.baseService.save(record, recordObject)
       $ws.connections.forEach(function (conn) {
@@ -530,7 +555,27 @@ module.exports = app => ({
         view: [],
         isCommon: 1,
         isTitle: 0,
-        content: '游戏结束！狼人阵营赢得胜利！'
+        content: {
+          type: 'rich-text',
+          content: [
+            {
+              text: '游戏结束！',
+              level: 1,
+            },
+            {
+              text: '狼人阵营',
+              level: 2,
+            },
+            {
+              text: '赢得',
+              level: 1,
+            },
+            {
+              text: '胜利！',
+              level: 3,
+            },
+          ]
+        }
       }
       await $service.baseService.save(record, recordObject)
       $ws.connections.forEach(function (conn) {
@@ -554,7 +599,27 @@ module.exports = app => ({
         view: [],
         isCommon: 1,
         isTitle: 0,
-        content: '游戏结束！好人阵营赢得胜利！'
+        content: {
+          type: 'rich-text',
+          content: [
+            {
+              text: '游戏结束！',
+              level: 1,
+            },
+            {
+              text: '好人阵营',
+              level: 3,
+            },
+            {
+              text: '赢得',
+              level: 1,
+            },
+            {
+              text: '胜利！',
+              level: 3,
+            },
+          ]
+        }
       }
       await $service.baseService.save(record, recordObject)
       $ws.connections.forEach(function (conn) {

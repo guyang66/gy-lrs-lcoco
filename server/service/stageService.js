@@ -22,7 +22,24 @@ module.exports = app => ({
         view: [],
         isCommon: 0,
         isTitle: 0,
-        content: '狼人今晚没有袭击玩家'
+        content: {
+          type: 'action',
+          key: 'jump',
+          text: '狼人空刀',
+          actionName: '空刀',
+          level: 5,
+          from: {
+            username: null,
+            name: '狼人',
+            position: null,
+            role: 'wolf',
+            camp: 0
+          },
+          to: {
+            username: null,
+            name: null,
+          }
+        }
       }
       await $service.baseService.save(record, recordObject)
       return $helper.wrapResult(true, '')
@@ -54,7 +71,27 @@ module.exports = app => ({
       view: [],
       isCommon: 0,
       isTitle: 0,
-      content: '狼人今晚袭击了：' + $support.getPlayerFullName(diePlayer)
+      content: {
+        text: '狼人今晚袭击了：' + $support.getPlayerFullName(diePlayer),
+        type: 'action',
+        key: 'kill',
+        actionName: '袭击',
+        level: 2,
+        from: {
+          username: null,
+          name: '狼人',
+          position: null,
+          role: 'wolf',
+          camp: 0,
+        },
+        to: {
+          username: diePlayer.username,
+          name: diePlayer.name,
+          position: diePlayer.position,
+          role: diePlayer.role,
+          camp: diePlayer.camp,
+        }
+      }
     }
     await $service.baseService.save(record, recordObject)
     return $helper.wrapResult(true, '')
@@ -74,10 +111,10 @@ module.exports = app => ({
     let gameInstance = await $service.baseService.queryById(game, id)
     // 女巫回合 => 天亮了, 需要结算死亡玩家和游戏是否结束
     let killAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 2, action: 'kill'})
+    let saveAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 3, action: 'antidote'})
     if(killAction && killAction.to){
       let killTarget = killAction.to
       let killPlayer = await $service.baseService.queryOne(player,{roomId: gameInstance.roomId, gameId: gameInstance._id, username: killTarget})
-      let saveAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 3, action: 'antidote'})
       if(!saveAction){
         // 女巫没有救人，不管他是没有使用技能，还是没有解药, 注定死亡一个
         let tagObject = {
@@ -95,7 +132,6 @@ module.exports = app => ({
         await $service.baseService.save(gameTag, tagObject)
         // 注册该玩家的死亡
         await $service.baseService.updateOne(player,{ roomId: gameInstance.roomId, gameId: gameInstance._id, username: killPlayer.username}, { status: 0 , outReason: 'assault'})
-        // todo: 不是毒杀的就可以给技能了，取消用 desc = poison去判断，麻烦
         if(killPlayer.role === 'hunter'){
           // 修改它的技能状态
           let skills = killPlayer.skill
@@ -135,7 +171,27 @@ module.exports = app => ({
         view: [],
         isCommon: 0,
         isTitle: 0,
-        content: $support.getPlayerFullName(witchPlayer) + '使用毒药毒死了' + $support.getPlayerFullName(poisonPlayer)
+        content: {
+          type: 'action',
+          key: 'poison',
+          text: $support.getPlayerFullName(witchPlayer) + '使用毒药毒死了' + $support.getPlayerFullName(poisonPlayer),
+          actionName: '毒药',
+          level: 2,
+          from: {
+            username: witchPlayer.username,
+            name: witchPlayer.name,
+            position: witchPlayer.position,
+            role: witchPlayer.role,
+            camp: witchPlayer.camp
+          },
+          to: {
+            username: poisonPlayer.username,
+            name: poisonPlayer.name,
+            position: poisonPlayer.position,
+            role: poisonPlayer.role,
+            camp: poisonPlayer.camp
+          }
+        }
       }
       await $service.baseService.save(record, recordObject)
 
@@ -154,6 +210,64 @@ module.exports = app => ({
       await $service.baseService.save(gameTag, tagObject)
     }
 
+    if(!saveAction && !poisonAction){
+      // 空过,找女巫
+      let witchPlayer = await $service.baseService.queryOne(player,{roomId: gameInstance.roomId, gameId: gameInstance._id, role: 'witch'})
+
+      // 查女巫的技能
+      let skill = witchPlayer.skill
+      let has = false
+      skill.forEach(item=>{
+        if(item.status === 1){
+          has = true
+        }
+      })
+      let recordObject = {
+        roomId: gameInstance.roomId,
+        gameId: gameInstance._id,
+        day: gameInstance.day,
+        stage: gameInstance.stage,
+        view: [],
+        isCommon: 0,
+        isTitle: 0,
+        content: {
+          type: 'action',
+          key: 'jump',
+          text: $support.getPlayerFullName(witchPlayer) + '，女巫空过',
+          actionName: has ? '空过' : '药已用完',
+          level: 5,
+          from: {
+            username: witchPlayer.username,
+            name: witchPlayer.name,
+            status: witchPlayer.status,
+            position: witchPlayer.position,
+            role: witchPlayer.role,
+            camp: witchPlayer.camp
+          },
+          to: {
+            username: null,
+            name: null,
+          }
+        }
+      }
+      await $service.baseService.save(record, recordObject)
+    }
+
+    let gameRecord = {
+      roomId: gameInstance.roomId,
+      gameId: gameInstance._id,
+      stage: gameInstance.stage,
+      day: gameInstance.day,
+      content: {
+        text: '天亮了！',
+        type: 'text',
+        level: 4,
+      },
+      isCommon: 1,
+      isTitle: 0
+    }
+    await $service.baseService.save(record, gameRecord)
+
     // 结算所有的死亡玩家
     let diePlayerList = await $service.baseService.query(gameTag,{roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage:{ $in: [2, 3]}, mode: 1})
     if(!diePlayerList || diePlayerList.length < 1){
@@ -165,28 +279,49 @@ module.exports = app => ({
         view: [],
         isCommon: 1,
         isTitle: 0,
-        content: '昨天晚上是平安夜!'
+        content: {
+          type: 'text',
+          text: '昨天晚上是平安夜!',
+          level: 3,
+        }
       }
       await $service.baseService.save(record, peaceRecord)
     } else {
-      let str = ''
-      diePlayerList.forEach((item,index)=>{
-        if(index !== 0){
-          str = str + '和'
+      let dieMap = {} // 狼人和女巫杀同一个人
+      for(let i = 0; i < diePlayerList.length; i++){
+        if(dieMap[diePlayerList[i].target]){
+          continue
         }
-        str = str + item.position + '号玩家（' + item.name + '）'
-      })
-      let deadRecord = {
-        roomId: gameInstance.roomId,
-        gameId: gameInstance._id,
-        day: gameInstance.day,
-        stage: gameInstance.stage,
-        view: [],
-        isCommon: 1,
-        isTitle: 0,
-        content: '昨天晚上死亡的是：' + str
+        let diePlayer = await $service.baseService.queryOne(player,{roomId: gameInstance.roomId, gameId: gameInstance._id, username: diePlayerList[i].target})
+        let deadRecord = {
+          roomId: gameInstance.roomId,
+          gameId: gameInstance._id,
+          day: gameInstance.day,
+          stage: gameInstance.stage,
+          view: [],
+          isCommon: 1,
+          isTitle: 0,
+          content: {
+            type: 'action',
+            action: 'die',
+            actionName: '死亡',
+            level: 2,
+            from: {
+              username: diePlayer.username,
+              name: diePlayer.name,
+              position: diePlayer.position,
+              role: diePlayer.role,
+              camp: diePlayer.camp
+            },
+            to: {
+              role: 'out',
+              name: '出局'
+            }
+          }
+        }
+        await $service.baseService.save(record, deadRecord)
+        dieMap[diePlayerList[i].target] = diePlayer
       }
-      await $service.baseService.save(record, deadRecord)
     }
     return $helper.wrapResult(true, '')
   },
