@@ -112,6 +112,8 @@ const Index = (props) => {
   const [roleCard, setRoleCard] = useState(null)
   const [winCard, setWinCard] = useState(null)
 
+  const [timerTime, setTimerTime] = useState(null)
+
   useEffect(()=>{
     getRoomDetail()
   },[])
@@ -670,7 +672,6 @@ const Index = (props) => {
   }
 
   const wsMessage = (msg) => {
-    console.log(msg)
     // todo: 返回 action、username，同一个人则不处理消息
     // todo: ws url有跨域问题
     if(msg === 'refreshRoom'){
@@ -725,6 +726,13 @@ const Index = (props) => {
       }
       if(socketOn){
         getRoomDetail()
+      }
+    } else {
+      // 处理定时器
+      let msgData = JSON.parse(msg)
+      console.log(msgData)
+      if(msgData.time !== null ){
+        setTimerTime(msgData.time)
       }
     }
   }
@@ -881,7 +889,12 @@ const Index = (props) => {
                   <div className="mar-l5">-</div>
                   <div className="color-main mar-l5">{'第' + (gameDetail.stage + 1) + '阶段'}</div>
                   <div className="color-orange">{'（' + gameDetail.stageName + '）'}</div>
-
+                  {
+                    timerTime !== null && timerTime > 0 ? <div className="color-black">行动倒计时：</div> : null
+                  }
+                  {
+                    timerTime !== null && timerTime > 0 ? <div className="color-red">{timerTime}</div> : null
+                  }
                 </div>
                 <div className="game-info mar-b10">
                   <div className="txt">
