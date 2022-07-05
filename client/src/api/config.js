@@ -42,14 +42,6 @@ export default {
     })
   },
 
-  userNextStage (params) {
-    return fetch({
-      url: urlPrefix + 'game/userNextStage/auth',
-      method: 'get',
-      params,
-    })
-  },
-
   gameRecord (params) {
     return fetch({
       url: urlPrefix + 'game/record/auth',

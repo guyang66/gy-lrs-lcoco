@@ -26,14 +26,6 @@ export default {
     })
   },
 
-  userNextStage (params) {
-    return fetch({
-      url: urlPrefix + 'game/userNextStage/auth',
-      method: 'get',
-      params,
-    })
-  },
-
   gameRecord (params) {
     return fetch({
       url: urlPrefix + 'game/record/auth',
@@ -42,7 +34,7 @@ export default {
     })
   },
 
-  checkPlayerRole (params) {
+  checkPlayer (params) {
     return fetch({
       url: urlPrefix + 'game/checkPlayer/auth',
       method: 'get',
@@ -74,7 +66,7 @@ export default {
     })
   },
 
-  poisonPlayerRole (params) {
+  poisonPlayer (params) {
     return fetch({
       url: urlPrefix + 'game/poisonPlayer/auth',
       method: 'get',
@@ -82,7 +74,7 @@ export default {
     })
   },
 
-  shootPlayerRole (params) {
+  shootPlayer (params) {
     return fetch({
       url: urlPrefix + 'game/shootPlayer/auth',
       method: 'get',
@@ -90,7 +82,7 @@ export default {
     })
   },
 
-  boomAction (params) {
+  boomPlayer (params) {
     return fetch({
       url: urlPrefix + 'game/boomPlayer/auth',
       method: 'get',

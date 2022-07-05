@@ -21,7 +21,6 @@ const Index = (props) => {
   const [joinRoomModal, setJoinRoomModal] = useState(false)
   const [roomKey, setRoomKey] = useState(null)
 
-
   const playerType = [
     {
       label: '房主',

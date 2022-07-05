@@ -31,7 +31,7 @@ const Btn = (props) => {
         okText: '确定',
         cancelText: '取消',
         onOk() {
-          apiGame.gameAgain({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+          apiGame.gameAgain({roomId: gameDetail.roomId}).then(()=>{
             message.success('创建成功！')
           })
         }

@@ -25,16 +25,15 @@ module.exports = app => ({
   },
 
   async test (ctx) {
-    const { $ws,$helper } = app
-    $ws.connections.forEach(function (conn) {
-      // 前端刷新房间状态
-      console.log(conn.path)
-      if(conn.path==='/lrs/62bea9278be1b52b7f61e812'){
-        conn.sendText('gameStart')
-      }
-    })
+    const { $ws, $helper } = app
+    // $ws.connections.forEach(function (conn) {
+    //   // 前端刷新房间状态
+    //   console.log(conn.path)
+    //   if(conn.path==='/lrs/62bea9278be1b52b7f61e812'){
+    //     conn.sendText('gameStart')
+    //   }
+    // })
     ctx.body = $helper.Result.success('ok')
   }
-
 
 })

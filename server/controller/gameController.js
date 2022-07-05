@@ -37,7 +37,7 @@ module.exports = app => ({
       }
     })
     if(seatStatus === 0){
-      ctx.body = $helper.Result.fail(-1,'座位未做满，不满足游戏开始条件！')
+      ctx.body = $helper.Result.fail(-1,'座位未坐满，不满足游戏开始条件！')
       return
     }
 
@@ -230,7 +230,7 @@ module.exports = app => ({
 
   /**
    * 进入下一阶段
-   * ctx.query.role不存在的话，表示房主强制进行下一阶段
+   * role不存在的话，表示房主强制进行下一阶段
    * @returns {Promise<void>}
    */
   async nextStage (ctx) {
@@ -253,6 +253,7 @@ module.exports = app => ({
     }
     let gameInstance = await $service.baseService.queryById(game, gameId)
     if(role){
+      /** 去掉玩家调用这个接口，采用倒计时，到点系统自动跳转到下一阶段 **/
       // role存在，说明是非host用户在调用接口，逻辑和host调用一样的，只不过多校验一下身份
       if(role !== currentPlayer.role){
         ctx.body = $helper.Result.fail(-1,'role身份前后端校验不通过！')
@@ -264,10 +265,12 @@ module.exports = app => ({
         return
       }
       if(currentPlayer.role === 'wolf' && gameInstance.stage !== 2){
+        // 是狼人身份在调用接口，但是游戏中不是狼人的回合
         ctx.body = $helper.Result.fail(-1,'role身份前后端校验不通过（不是你的回合）！')
         return
       }
       if(currentPlayer.role === 'witch' && gameInstance.stage !== 3){
+        // 是女巫身份在调用接口，但是游戏中不是女巫的回合
         ctx.body = $helper.Result.fail(-1,'role身份前后端校验不通过（不是你的回合）！')
         return
       }
@@ -275,7 +278,7 @@ module.exports = app => ({
     } else {
       // 如果role 不存在，host 在调用接口，校验一下是不是host身份
       if(currentUser.defaultRole !== 'host'){
-        ctx.body = $helper.Result.fail(-1,'请不是房主，无权进行此操作！')
+        ctx.body = $helper.Result.fail(-1,'您不是房主，无权进行此操作！')
         return
       }
     }
@@ -293,6 +296,7 @@ module.exports = app => ({
     }
 
     // 如果手动进入下一回合，需要清掉定时器
+    //todo: bug 如果多场游戏同时进行，这里timer会混乱，
     if(app.timer){
       $nodeCache.set('game-time-' + gameInstance._id, -1)
       clearInterval(app.timer)
@@ -337,6 +341,8 @@ module.exports = app => ({
     let recordList = await $service.baseService.query(record, query, {} , {sort: {id: -1}})
     let tagMap = {}
 
+    // 游戏中只给部分信息，不影响游戏继续下去，隐藏掉关键的视野和角色信息
+    // 游戏结束，给出完整游戏流程信息（属于复盘）
     const filterRecord = (record) => {
       if(record.content.type === 'action'){
         return Object.assign({},record,{
@@ -389,8 +395,6 @@ module.exports = app => ({
         }
       }
     })
-
-
     ctx.body = $helper.Result.success(tagMap)
   },
 
@@ -445,7 +449,7 @@ module.exports = app => ({
     }
     let visionInstance = await $service.baseService.queryOne(vision, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, to: username})
     if(visionInstance.status === 1){
-      ctx.body = $helper.Result.fail(-1,'您已查验并知晓该玩家的身份！')
+      ctx.body = $helper.Result.fail(-1,'您已查验过该玩家的身份！')
       return
     }
 
@@ -516,6 +520,7 @@ module.exports = app => ({
       camp: targetCamp,
       campName: targetCampName,
     }
+
     $ws.connections.forEach(function (conn) {
       let url = '/lrs/' + gameInstance.roomId
       if(conn.path === url){
@@ -586,7 +591,7 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'该玩家已出局！')
       return
     }
-    // 袭击不一定会真的造成死亡。
+    // 袭击不一定会真的造成死亡，还有可能被女巫救，所以要在天亮时结算。
 
     // 生成一条action
     let actionObject = {
@@ -820,7 +825,7 @@ module.exports = app => ({
   },
 
   /**
-   * 撒毒
+   * 女巫撒毒
    * @returns {Promise<void>}
    */
   async poisonPlayer (ctx) {
@@ -917,11 +922,10 @@ module.exports = app => ({
       skill: newSkillStatus
     })
     ctx.body = $helper.Result.success(r)
-
   },
 
   /**
-   * 开枪
+   * 猎人开枪
    * @param ctx
    * @returns {Promise<void>}
    */
@@ -1046,7 +1050,6 @@ module.exports = app => ({
     }
     await $service.baseService.save(gameTag, tagObject)
 
-    //
     let deadRecord = {
       roomId: gameInstance.roomId,
       gameId: gameInstance._id,
@@ -1135,7 +1138,8 @@ module.exports = app => ({
       return
     }
     if(gameInstance.stage !== 5 ) {
-      ctx.body = $helper.Result.fail(-1,'该阶段不能进行开枪操作')
+      // 只能在发言阶段自爆
+      ctx.body = $helper.Result.fail(-1,'该阶段不能进行自爆操作')
       return
     }
     let currentUser = await $service.baseService.userInfo(ctx)
@@ -1237,6 +1241,11 @@ module.exports = app => ({
     ctx.body = $helper.Result.success(true)
   },
 
+  /**
+   * 游戏结果
+   * @param ctx
+   * @returns {Promise<void>}
+   */
   async gameResult (ctx) {
     const { $service, $helper, $model} = app
     const { game} = $model
@@ -1261,6 +1270,11 @@ module.exports = app => ({
     ctx.body = $helper.Result.success(result)
   },
 
+  /**
+   * 结束游戏（流局）
+   * @param ctx
+   * @returns {Promise<void>}
+   */
   async gameDestroy (ctx) {
     const { $service, $helper, $model, $ws } = app
     const { game, record, room } = $model
@@ -1304,16 +1318,17 @@ module.exports = app => ({
     ctx.body = $helper.Result.success('ok')
   },
 
+  /**
+   * 再来一局游戏
+   * @param ctx
+   * @returns {Promise<void>}
+   */
   async gameAgain (ctx) {
     const { $service, $helper, $model, $ws } = app
-    const { game, room } = $model
-    const { roomId, gameId } = ctx.query
+    const { room } = $model
+    const { roomId } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
-      return
-    }
-    if(!gameId || gameId === ''){
-      ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
       return
     }
     let roomInstance = await $service.baseService.queryById(room, roomId)
@@ -1321,13 +1336,8 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'房间不存在！')
       return
     }
-    let gameInstance = await $service.baseService.queryById(game, gameId)
-    if(!gameInstance){
-      ctx.body = $helper.Result.fail(-1,'游戏不存在！')
-      return
-    }
 
-    // 重置掉当前局, 就是简单的清掉gameId即可，然后
+    // 重置掉当前局, 就是简单的清掉gameId即可
     let update = {
       status: 0,
       gameId: null
@@ -1341,5 +1351,4 @@ module.exports = app => ({
     })
     ctx.body = $helper.Result.success('ok')
   }
-
 })

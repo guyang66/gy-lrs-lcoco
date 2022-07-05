@@ -23,7 +23,7 @@ import utils from '@utils'
 import cls from "classnames";
 
 const { confirm, info } = Modal;
-const { modalDescMap, roleCardMap } = constants
+const { modalDescMap, roleCardMap, roleMap } = constants
 
 const Index = (props) => {
   const {appStore, history} = props;
@@ -147,7 +147,6 @@ const Index = (props) => {
     })
   }
 
-
   const lookRecord = () => {
     apiGame.gameRecord({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
       initRecordList(data)
@@ -157,17 +156,7 @@ const Index = (props) => {
   const useSkill = (key) => {
     setCurrentAction(key)
     if(key === 'antidote' || key === 'boom'){
-      // 女巫使用解药。
-      confirm(
-        {
-          title: modalDescMap[currentAction].title,
-          okText: '确定',
-          cancelText: '取消',
-          onOk() {
-            playerAction(null, key)
-          }
-        }
-      )
+      playerAction(null, key, true)
       return
     }
     if(key === 'check'){
@@ -211,57 +200,71 @@ const Index = (props) => {
     message.error('未识别的动作！')
   }
 
-  const playerAction = (player, action) => {
-    if(action === 'check'){
-      checkPlayerAction(player)
-      return
-    }
-    if(action === 'assault'){
-      assaultPlayerAction(player)
-      return
-    }
-    if(action === 'poison'){
-      poisonPlayerAction(player)
-      return
-    }
-    if(action === 'shoot'){
-      shootPlayerAction(player)
-      return
-    }
-    if(action === 'vote'){
-      votePlayerAction(player)
-      return
-    }
-    if(action === 'boom') {
-      antidotePlayerAction()
-      return
-    }
-    if(action === 'boom') {
-      boomPlayerAction()
-      return
-    }
-    message.error('未识别的技能！')
-  }
-
-  const checkPlayerAction = (item) => {
-    confirm(
-      {
-        title: '确定要查验该玩家吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          fetchCheckPlayer(item)
-        }
+  const playerAction = (player, action, needConfirm) => {
+    const fetchMap = {
+      'check': {
+        api: apiGame.checkPlayer,
+        role: 'predictor'
+      },
+      'assault': {
+        api: apiGame.assaultPlayer,
+        role: 'wolf',
+      },
+      'poison': {
+        api: apiGame.poisonPlayer,
+        role: 'witch'
+      },
+      'vote': {
+        api: apiGame.votePlayer,
+        role: null
+      },
+      'shoot': {
+        api: apiGame.shootPlayer,
+        role: 'hunter'
+      },
+      'boom': {
+        api:  apiGame.boomPlayer,
+        role: 'wolf',
+      },
+      'antidote': {
+        api: apiGame.antidotePlayer,
+        role: 'witch'
       }
-    )
-  }
+    }
 
-  const fetchCheckPlayer = (item) => {
-    if(currentRole.role !== 'predictor'){
-      message.warn('你不是预言家，不能进行此操作！')
+    let params = {roomId: gameDetail.roomId, gameId: gameDetail._id}
+    if(player){
+      params.username = player.username
+    }
+
+    if(needConfirm){
+      confirm(
+        {
+          title: modalDescMap[action] ? modalDescMap[action].confirm : '',
+          okText: '确定',
+          cancelText: '取消',
+          onOk() {
+            actionFetch(fetchMap[action] ? fetchMap[action].api : null, params, fetchMap[action] ? fetchMap[action].role : null)
+          }
+        }
+      )
       return
     }
-    apiGame.checkPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: item.username}).then(data=>{
+    actionFetch(fetchMap[action] ? fetchMap[action].api : null, params, fetchMap[action] ? fetchMap[action].role : null)
+  }
+
+  const actionFetch = (fetch, params, role) => {
+    if(!fetch){
+      message.error('未识别的动作！')
+      return;
+    }
+
+    if(role && currentRole.role !== role){
+      message.warn('你不是' + roleMap[role] + '，不能进行此操作！')
+      return
+    }
+    fetch(params).then(data=>{
+      message.success('操作成功！')
       actionFinish(data)
     })
   }
@@ -281,114 +284,6 @@ const Index = (props) => {
     setActionPlayer(tmp)
     // 刷新game
     initGame(gameDetail._id, gameDetail.roomId)
-  }
-
-  const assaultPlayerAction = (item) => {
-    confirm(
-      {
-        title: '确定要袭击该玩家吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          fetchAssaultPlayer(item)
-        }
-      }
-    )
-  }
-
-  const fetchAssaultPlayer = (item) => {
-    if(currentRole.role !== 'wolf'){
-      message.warn('你不是狼人，不能进行此操作！')
-      return
-    }
-    let username = item.username
-    apiGame.assaultPlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
-      actionFinish(data)
-    })
-  }
-
-  const boomPlayerAction = () => {
-    if(currentRole.role !== 'wolf'){
-      message.warn('你不是狼人，不能进行自爆操作！')
-      return
-    }
-    apiGame.boomAction({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
-      message.success('自爆成功')
-    })
-  }
-
-  const antidotePlayerAction = () => {
-    if(currentRole.role !== 'witch'){
-      message.warn('你不是女巫，不能进行此操作！')
-      return
-    }
-    apiGame.antidotePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
-      message.success('操作成功')
-      initGame(gameDetail._id, roomDetail._id)
-    })
-  }
-
-  const votePlayerAction = (item) => {
-    confirm(
-      {
-        title: '确定要投票该玩家吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          apiGame.votePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: item.username}).then(data=>{
-            actionFinish(data)
-          })
-        }
-      }
-    )
-  }
-
-  const poisonPlayerAction = (item)=> {
-    confirm(
-      {
-        title: '确定撒毒该玩家吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          fetchPoisonPlayer(item)
-        }
-      }
-    )
-  }
-
-  const shootPlayerAction = (item)=> {
-    confirm(
-      {
-        title: '确定要开枪带走该玩家吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          fetchShootPlayer(item)
-        }
-      }
-    )
-  }
-
-  const fetchShootPlayer = (item) => {
-    if(currentRole.role !== 'hunter'){
-      message.warn('你不是猎人，不能进行此操作！')
-      return
-    }
-    let username = item.username
-    apiGame.shootPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
-      actionFinish(data)
-    })
-  }
-
-  const fetchPoisonPlayer = (item) => {
-    if(currentRole.role !== 'witch'){
-      message.warn('你不是女巫，不能进行此操作！')
-      return
-    }
-    let username = item.username
-    apiGame.poisonPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
-      actionFinish(data)
-    })
   }
 
   const openRoleCard = (roleInfo) => {
@@ -446,17 +341,6 @@ const Index = (props) => {
     setWinCard(winCardView)
   }
 
-  const closeAllModel = () => {
-    setActionModal(false)
-    setRecordModal(false)
-    if(winCard){
-      winCard.destroy()
-    }
-    if(roleCard){
-      roleCard.destroy()
-    }
-  }
-
   const wsMessage = (msg) => {
     if(msg === 'refreshRoom'){
       if(socketOn){
@@ -486,6 +370,17 @@ const Index = (props) => {
       if(msgData.time !== null ){
         setTimerTime(msgData.time)
       }
+    }
+  }
+
+  const closeAllModel = () => {
+    setActionModal(false)
+    setRecordModal(false)
+    if(winCard){
+      winCard.destroy()
+    }
+    if(roleCard){
+      roleCard.destroy()
     }
   }
 
@@ -608,7 +503,7 @@ const Index = (props) => {
                     {
                       item.check && !item.isTarget ?
                         <Button size="small"
-                                onClick={()=>{playerAction(item, currentAction)}}
+                                onClick={()=>{playerAction(item, currentAction, true)}}
                                 className={modalDescMap[currentAction] ? modalDescMap[currentAction].className : ''}>
                           {modalDescMap[currentAction] ? modalDescMap[currentAction].buttonText : ''}
                         </Button> : null
@@ -622,21 +517,18 @@ const Index = (props) => {
                         })}>
                           {item.roleName}
                         </div>
-                      ) : (
-                        <>
-                          {
-                            item.camp !== null && item.camp !== undefined ? (
-                              <div className={cls({
-                                'camp-tag': true,
-                                'bg-green': item.camp === 1,
-                                'bg-red': item.camp !== 1
-                              })}>
-                                {item.camp === 1 ? '好人阵营' : '狼人阵营'}
-                              </div>
-                            ) : null
-                          }
-                        </>
-                      )
+                      ) : null
+                    }
+                    {
+                      item.camp !== null && item.camp !== undefined && currentAction === 'check' ? (
+                        <div className={cls({
+                          'camp-tag': true,
+                          'bg-green': item.camp === 1,
+                          'bg-red': item.camp !== 1
+                        })}>
+                          {item.camp === 1 ? '好人阵营' : '狼人阵营'}
+                        </div>
+                      ) : null
                     }
                   </div>
                 )
@@ -656,8 +548,8 @@ const Index = (props) => {
                           <span>的身份是：</span>
                           <span className={cls({
                             'bolder': true,
-                            'bg-green': actionResult.camp === 1,
-                            'bg-red': actionResult.camp !== 1
+                            'color-green': actionResult.camp === 1,
+                            'color-red': actionResult.camp !== 1
                           })}>{actionResult.campName}</span>
                         </>
                       ) : (

@@ -10,7 +10,6 @@ module.exports = app => {
 
   router.get('/tt', $middleware.auth, $controller.configController.test)
 
-
   // 后台配置接口
   router.get('/api/route/auth',$middleware.auth, $controller.configController.getRoute)
   router.get('/api/permission/ui/auth',$middleware.auth, $controller.configController.getUiPermission)

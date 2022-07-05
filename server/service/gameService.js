@@ -221,7 +221,7 @@ module.exports = app => ({
         day: gameInstance.day,
         stage: { $in: [3, 4]}, // 阶段
         mode: 1
-      })
+      }, {}, { sort: { position: 1}})
       if(!diePlayer || diePlayer.length < 1){
         let info = []
         info.push({text: '昨天晚上是', level: 1})
@@ -231,10 +231,10 @@ module.exports = app => ({
         let dieString = ''
         let dieMap = {} // 去重，去掉狼人和女巫杀同一个人
         diePlayer.forEach((item,index)=>{
-          if(dieMap[item.username]){
+          if(dieMap[item.target]){
             return
           }
-          dieMap[item.username] = item
+          dieMap[item.target] = item
           if(index !== 0){
             dieString = dieString + '和'
           }
@@ -695,7 +695,6 @@ module.exports = app => ({
             }
           }
         }
-        console.log(recordObject.content.from)
         await $service.baseService.save(record, recordObject)
       }
     } else if(stage === 2){
