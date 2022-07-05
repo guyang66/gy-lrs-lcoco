@@ -9,7 +9,21 @@ import {message, Modal} from "antd";
 const { confirm } = Modal;
 
 const Btn = (props) => {
-  const { appStore, gameDetail, lookRecord, getRoomDetail, nextStage} = props
+  const { appStore, gameDetail, lookRecord, getRoomDetail} = props
+  const nextStage = () => {
+    confirm(
+      {
+        title: '确定进入下一阶段吗？',
+        okText: '确定',
+        cancelText: '取消',
+        onOk() {
+          apiGame.nextStage({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+            message.success('操作成功！')
+          })
+        }
+      }
+    )
+  }
   const gameAgain = () => {
     confirm(
       {

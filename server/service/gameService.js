@@ -229,7 +229,12 @@ module.exports = app => ({
         return $helper.wrapResult(true, info)
       } else {
         let dieString = ''
+        let dieMap = {} // 去重，去掉狼人和女巫杀同一个人
         diePlayer.forEach((item,index)=>{
+          if(dieMap[item.username]){
+            return
+          }
+          dieMap[item.username] = item
           if(index !== 0){
             dieString = dieString + '和'
           }

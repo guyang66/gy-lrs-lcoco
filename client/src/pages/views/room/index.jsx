@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from "react";
 import "./index.styl";
+import Websocket from 'react-websocket';
 import {inject, observer} from "mobx-react";
 import {withRouter} from "react-router-dom";
 
@@ -12,23 +13,17 @@ import GameFooterView from "@components/game/gameFooter";
 import GameReadyView from "@components/game/gameReady";
 import GameContentView from "@components/game/gameContent";
 import GameBtnView from "@components/game/gameButton";
-
 import RecordView from "@components/game/gameRecord";
 
-import Websocket from 'react-websocket';
-
-import predictor from "@assets/images/role/card/yuyanjia.png"
-import hunter from "@assets/images/role/card/lieren.png"
-import witch from "@assets/images/role/card/nvwu.png"
-import villager from "@assets/images/role/card/pingming.png"
-import wolf from "@assets/images/role/card/langren.png"
 import vote from "@assets/images/role/skill/vote.svg"
 import loser from "@assets/images/shibai.svg"
 
+import constants from "@common/constants";
 import utils from '@utils'
 import cls from "classnames";
 
 const { confirm, info } = Modal;
+const { modalDescMap, roleCardMap } = constants
 
 const Index = (props) => {
   const {appStore, history} = props;
@@ -36,50 +31,25 @@ const Index = (props) => {
 
   let roomId =  history.location.state && history.location.state.id
 
-  const roleCardMap = {
-    'predictor': predictor,
-    'hunter': hunter,
-    'witch': witch,
-    'villager': villager,
-    'wolf': wolf,
-  }
-
   const [roomDetail, setRoomDetail] = useState({})
+  const [seatInfo, setSeatInfo] = useState([])
   const [gameDetail, setGameDetail] = useState({})
   const [playerInfo, setPlayerInfo] = useState([])
   const [currentRole, setCurrentRole] = useState({})
   const [skillInfo, setSkillInfo] = useState([])
   const [actionInfo, setActionInfo] = useState([])
 
-  const [seat, setSeat] = useState([])
-
   const [errorPage, setErrorPage] = useState(false)
 
   const [recordModal, setRecordModal] = useState(false)
   const [gameRecord, setGameRecord] = useState([])
 
-  const [checkModal, setCheckModal] = useState(false)
-  const [checkPlayer, setCheckPlayer] = useState([])
-  const [checkResult, setCheckResult] = useState(null)
-
-  const [assaultModal, setAssaultModal] = useState(false)
-  const [assaultPlayer, setAssaultPlayer] = useState([])
-  const [assaultResult, setAssaultResult] = useState(null)
-
-  const [voteModal, setVoteModal] = useState(false)
-  const [votePlayer, setVotePlayer] = useState([])
-  const [voteResult, setVoteResult] = useState(null)
-
-  const [poisonModal, setPoisonModal] = useState(false)
-  const [poisonPlayer, setPoisonPlayer] = useState([])
-  const [poisonResult, setPoisonResult] = useState(null)
-
-  const [shootModal, setShootModal] = useState(false)
-  const [shootPlayer, setShootPlayer] = useState([])
-  const [shootResult, setShootResult] = useState(null)
+  const [currentAction, setCurrentAction] = useState('')
+  const [actionModal, setActionModal] = useState(false)
+  const [actionPlayer, setActionPlayer] = useState([])
+  const [actionResult, setActionResult] = useState(null)
 
   const [socketOn,setSocketOn] = useState(true)
-
   const [roleCard, setRoleCard] = useState(null)
   const [winCard, setWinCard] = useState(null)
 
@@ -135,10 +105,10 @@ const Index = (props) => {
           player: null
         })
       }
-      setSeat(p)
+      setSeatInfo(p)
     } else {
       let p = []
-      for(let i =0; i< detail.seat.length; i++){
+      for(let i = 0; i < detail.seat.length; i++){
         let item = detail.seat[i]
         p.push({
           index: i,
@@ -151,7 +121,7 @@ const Index = (props) => {
       p.sort(function (a,b){
         return a.key - b.key
       })
-      setSeat(p)
+      setSeatInfo(p)
     }
   }
 
@@ -164,34 +134,19 @@ const Index = (props) => {
     setRecordModal(true)
   }
 
-
   const quitRoom = () => {
     if(!roomId){
       history.push({pathname: '/index'})
       return
     }
     setSocketOn(false)
-    apiRoom.quitRoom({id: roomId, username: user.username}).then(data=>{
+    apiRoom.quitRoom({id: roomId, username: user.username}).then(()=>{
       history.push({pathname: '/index'})
     }).catch(()=>{
       setSocketOn(true)
     })
   }
 
-  const nextStage = () => {
-    confirm(
-      {
-        title: '确定进入下一阶段吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          apiGame.nextStage({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
-            message.success('操作成功！')
-          })
-        }
-      }
-    )
-  }
 
   const lookRecord = () => {
     apiGame.gameRecord({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
@@ -199,8 +154,22 @@ const Index = (props) => {
     })
   }
 
-
   const useSkill = (key) => {
+    setCurrentAction(key)
+    if(key === 'antidote' || key === 'boom'){
+      // 女巫使用解药。
+      confirm(
+        {
+          title: modalDescMap[currentAction].title,
+          okText: '确定',
+          cancelText: '取消',
+          onOk() {
+            playerAction(null, key)
+          }
+        }
+      )
+      return
+    }
     if(key === 'check'){
       // 预言家查验, 计算查验数组
       let tmp = []
@@ -218,85 +187,60 @@ const Index = (props) => {
         }
         tmp.push({...item, check: canCheck, isTarget: false})
       })
-      setCheckPlayer(tmp)
-      setCheckModal(true)
-    } else if(key === 'assault'){
-      // 预言家查验, 计算查验数组
-      let tmp = []
-      playerInfo.forEach(item=>{
-        let canCheck = true
-        if(item.status === 0){
-          // 死人不能杀
-          canCheck = false
-        }
-        // 狼人是可以杀自己和队友的
-        tmp.push({...item, check: canCheck, isTarget: false})
-      })
-      setAssaultPlayer(tmp)
-      setAssaultModal(true)
-    } else if(key === 'antidote'){
-      // 预言家查验, 计算查验数组
-      confirm(
-        {
-          title: '确定要救该玩家吗？',
-          okText: '确定',
-          cancelText: '取消',
-          onOk() {
-            antidotePlayerAction()
-          }
-        }
-      )
-    } else if(key === 'vote'){
-      // 投票环节
-      let tmp = []
-      playerInfo.forEach(item=>{
-        let canCheck = true
-        if(item.status === 0){
-          // 死人不能投
-          canCheck = false
-        }
-        tmp.push({...item, check: canCheck, isTarget: false})
-      })
-      setVotePlayer(tmp)
-      setVoteModal(true)
-    } else if (key === 'poison') {
-      // 毒人
-      let tmp = []
-      playerInfo.forEach(item=>{
-        let canCheck = true
-        if(item.status === 0){
-          // 死人不能毒
-          canCheck = false
-        }
-        tmp.push({...item, check: canCheck, isTarget: false})
-      })
-      setPoisonPlayer(tmp)
-      setPoisonModal(true)
-    } else if (key === 'shoot') {
-      // 开枪
-      let tmp = []
-      playerInfo.forEach(item=>{
-        let canCheck = true
-        if(item.status === 0){
-          // 不能对死人开枪
-          canCheck = false
-        }
-        tmp.push({...item, check: canCheck, isTarget: false})
-      })
-      setShootPlayer(tmp)
-      setShootModal(true)
-    } else if (key === 'boom'){
-      confirm(
-        {
-          title: '确定要自爆吗（自爆之后直接进入天黑）？',
-          okText: '确定',
-          cancelText: '取消',
-          onOk() {
-            boomAction()
-          }
-        }
-      )
+      setActionPlayer(tmp)
+      setActionModal(true)
+      return
     }
+
+    if(key === 'assault' || key === 'shoot' || key === 'poison' || key === 'vote'){
+      // 预言家查验, 计算查验数组
+      let tmp = []
+      playerInfo.forEach(item=>{
+        let canCheck = true
+        if(item.status === 0){
+          // 不能对死人发动技能
+          canCheck = false
+        }
+        tmp.push({...item, check: canCheck, isTarget: false})
+      })
+      setActionPlayer(tmp)
+      setActionModal(true)
+      return;
+    }
+
+    message.error('未识别的动作！')
+  }
+
+  const playerAction = (player, action) => {
+    if(action === 'check'){
+      checkPlayerAction(player)
+      return
+    }
+    if(action === 'assault'){
+      assaultPlayerAction(player)
+      return
+    }
+    if(action === 'poison'){
+      poisonPlayerAction(player)
+      return
+    }
+    if(action === 'shoot'){
+      shootPlayerAction(player)
+      return
+    }
+    if(action === 'vote'){
+      votePlayerAction(player)
+      return
+    }
+    if(action === 'boom') {
+      antidotePlayerAction()
+      return
+    }
+    if(action === 'boom') {
+      boomPlayerAction()
+      return
+    }
+    message.error('未识别的技能！')
   }
 
   const checkPlayerAction = (item) => {
@@ -312,14 +256,31 @@ const Index = (props) => {
     )
   }
 
-  const boomAction = () => {
-    if(currentRole.role !== 'wolf'){
-      message.warn('你不是狼人，不能进行自爆操作！')
+  const fetchCheckPlayer = (item) => {
+    if(currentRole.role !== 'predictor'){
+      message.warn('你不是预言家，不能进行此操作！')
       return
     }
-    apiGame.boomAction({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
-      message.success('自爆成功')
+    apiGame.checkPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: item.username}).then(data=>{
+      actionFinish(data)
     })
+  }
+
+  const actionFinish= (data) => {
+    setActionResult(data)
+    let newCheckPlayer = JSON.parse(JSON.stringify(actionPlayer))
+    let tmp = []
+    newCheckPlayer.forEach(item=>{
+      if(item.username === data.username){
+        let obj = {...item, camp: data.camp, campName: data.campName, isTarget: true}
+        tmp.push(obj)
+      } else {
+        tmp.push(item)
+      }
+    })
+    setActionPlayer(tmp)
+    // 刷新game
+    initGame(gameDetail._id, gameDetail.roomId)
   }
 
   const assaultPlayerAction = (item) => {
@@ -334,6 +295,28 @@ const Index = (props) => {
       }
     )
   }
+
+  const fetchAssaultPlayer = (item) => {
+    if(currentRole.role !== 'wolf'){
+      message.warn('你不是狼人，不能进行此操作！')
+      return
+    }
+    let username = item.username
+    apiGame.assaultPlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
+      actionFinish(data)
+    })
+  }
+
+  const boomPlayerAction = () => {
+    if(currentRole.role !== 'wolf'){
+      message.warn('你不是狼人，不能进行自爆操作！')
+      return
+    }
+    apiGame.boomAction({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+      message.success('自爆成功')
+    })
+  }
+
   const antidotePlayerAction = () => {
     if(currentRole.role !== 'witch'){
       message.warn('你不是女巫，不能进行此操作！')
@@ -353,72 +336,11 @@ const Index = (props) => {
         cancelText: '取消',
         onOk() {
           apiGame.votePlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: item.username}).then(data=>{
-            setVoteResult({...data, prompt: '投票结束，等待其他人的投票结果，由主持人确认完毕之后进入下一阶段'})
-            let newVotePlayer = JSON.parse(JSON.stringify(votePlayer))
-            let tmp = []
-            newVotePlayer.forEach(item=>{
-              if(item.username === data.username){
-                let obj = {...item, isTarget: true}
-                tmp.push(obj)
-              } else {
-                tmp.push(item)
-              }
-            })
-            setVotePlayer(tmp)
-            //刷新
-            initGame(gameDetail._id, gameDetail.roomId)
+            actionFinish(data)
           })
         }
       }
     )
-  }
-
-  const fetchAssaultPlayer = (item) => {
-    if(currentRole.role !== 'wolf'){
-      message.warn('你不是狼人，不能进行此操作！')
-      return
-    }
-    let username = item.username
-    apiGame.assaultPlayer({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
-      setAssaultResult({...data, prompt: '袭击完成后，确认队友完成之后，点击『下一阶段』按钮或主页面的操作选项中的『进入下一阶段』 进入一下阶段：女巫行动回合'})
-      let newAssaultPlayer = JSON.parse(JSON.stringify(assaultPlayer))
-      let tmp = []
-      newAssaultPlayer.forEach(item=>{
-        if(item.username === data.username){
-          let obj = {...item, isTarget: true}
-          tmp.push(obj)
-        } else {
-          tmp.push(item)
-        }
-      })
-      setAssaultPlayer(tmp)
-      //刷新
-      initGame(gameDetail._id, gameDetail.roomId)
-    })
-  }
-
-  const fetchCheckPlayer = (item) => {
-    if(currentRole.role !== 'predictor'){
-      message.warn('你不是预言家，不能进行此操作！')
-      return
-    }
-    let username = item.username
-    apiGame.checkPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
-      setCheckResult({...data, prompt: '记住你的查验信息后，点击『下一阶段』按钮或主页面的操作选项中的『进入下一阶段』 进入一下阶段：狼人行动回合'})
-      let newCheckPlayer = JSON.parse(JSON.stringify(checkPlayer))
-      let tmp = []
-      newCheckPlayer.forEach(item=>{
-        if(item.username === data.username){
-          let obj = {...item, camp: data.camp, campName: data.campName, isTarget: true}
-          tmp.push(obj)
-        } else {
-          tmp.push(item)
-        }
-      })
-      setCheckPlayer(tmp)
-      //刷新
-      initGame(gameDetail._id, gameDetail.roomId)
-    })
   }
 
   const poisonPlayerAction = (item)=> {
@@ -454,20 +376,7 @@ const Index = (props) => {
     }
     let username = item.username
     apiGame.shootPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
-      setShootResult({...data, prompt: ''})
-      let newShootPlayer = JSON.parse(JSON.stringify(shootPlayer))
-      let tmp = []
-      newShootPlayer.forEach(item=>{
-        if(item.username === data.username){
-          let obj = {...item, camp: data.camp, campName: data.campName, isTarget: true}
-          tmp.push(obj)
-        } else {
-          tmp.push(item)
-        }
-      })
-      setShootPlayer(tmp)
-      //刷新
-      initGame(gameDetail._id, gameDetail.roomId)
+      actionFinish(data)
     })
   }
 
@@ -478,20 +387,7 @@ const Index = (props) => {
     }
     let username = item.username
     apiGame.poisonPlayerRole({roomId: gameDetail.roomId, gameId: gameDetail._id, username: username}).then(data=>{
-      setPoisonResult({...data, prompt: '点击『下一阶段』按钮或主页面的操作选项中的『进入下一阶段』 进入一下阶段：天亮了'})
-      let newPoisonPlayer = JSON.parse(JSON.stringify(poisonPlayer))
-      let tmp = []
-      newPoisonPlayer.forEach(item=>{
-        if(item.username === data.username){
-          let obj = {...item, camp: data.camp, campName: data.campName, isTarget: true}
-          tmp.push(obj)
-        } else {
-          tmp.push(item)
-        }
-      })
-      setPoisonPlayer(tmp)
-      //刷新
-      initGame(gameDetail._id, gameDetail.roomId)
+      actionFinish(data)
     })
   }
 
@@ -506,14 +402,13 @@ const Index = (props) => {
       okText: '确认',
       content: (
         <div className="role-card-wrap FBV FBAC">
-          <img className="card-img" src={src}/>
+          <img className="card-img" src={src} />
         </div>
       )
     }
     let roleCardView = info(config)
     setRoleCard(roleCardView)
   }
-
 
   const showWinner = (data) => {
     const config = {
@@ -551,6 +446,17 @@ const Index = (props) => {
     setWinCard(winCardView)
   }
 
+  const closeAllModel = () => {
+    setActionModal(false)
+    setRecordModal(false)
+    if(winCard){
+      winCard.destroy()
+    }
+    if(roleCard){
+      roleCard.destroy()
+    }
+  }
+
   const wsMessage = (msg) => {
     if(msg === 'refreshRoom'){
       if(socketOn){
@@ -563,43 +469,14 @@ const Index = (props) => {
     } else if (msg === 'gameOver') {
       apiGame.gameResult({id: gameDetail._id}).then(data=>{
         // 关闭所有的弹窗
-        setAssaultModal(false)
-        setRecordModal(false)
-        setCheckModal(false)
-        setShootModal(false)
-        setPoisonModal(false)
-        setVoteModal(false)
+        closeAllModel()
         showWinner(data)
       })
     } else if (msg === 'reStart'){
-      setAssaultModal(false)
-      setRecordModal(false)
-      setCheckModal(false)
-      setShootModal(false)
-      setPoisonModal(false)
-      setVoteModal(false)
-      setGameDetail({})
-      setPlayerInfo([])
-      setCurrentRole({})
-      setSkillInfo([])
-      setActionInfo([])
-      setGameRecord([])
-      setCheckPlayer([])
-      setCheckResult(null)
-      setAssaultPlayer([])
-      setAssaultResult(null)
-      setVotePlayer([])
-      setVoteResult(null)
-      setPoisonPlayer([])
-      setPoisonResult(null)
-      setShootPlayer([])
-      setShootResult(null)
-      if(winCard){
-        winCard.destroy()
-      }
-      if(roleCard){
-        roleCard.destroy()
-      }
+      closeAllModel()
+      setActionPlayer([])
+      setCurrentAction('')
+      setActionResult(null)
       if(socketOn){
         getRoomDetail()
       }
@@ -634,7 +511,7 @@ const Index = (props) => {
         <GameHeaderView roomDetail={roomDetail} gameDetail={gameDetail} />
 
         {/*游戏准备*/}
-        { roomDetail.status === 0 ? <GameReadyView seat={seat} roomDetail={roomDetail} /> : null }
+        { roomDetail.status === 0 ? <GameReadyView seat={seatInfo} roomDetail={roomDetail} /> : null }
 
         {/*游戏进行*/}
         { roomDetail.status === 1 ? (
@@ -654,7 +531,7 @@ const Index = (props) => {
         <GameFooterView quitRoom={quitRoom} />
 
         {/*悬浮游戏按钮*/}
-        <GameBtnView gameDetail={gameDetail} lookRecord={lookRecord} getRoomDetail={getRoomDetail} nextStage={nextStage} />
+        <GameBtnView gameDetail={gameDetail} lookRecord={lookRecord} getRoomDetail={getRoomDetail} />
       </div>
 
       <Modal
@@ -680,7 +557,7 @@ const Index = (props) => {
       </Modal>
 
       <Modal
-        title="查验玩家"
+        title={modalDescMap[currentAction] ? modalDescMap[currentAction].title : ''}
         centered
         closable={false}
         className="modal-view-wrap player-click-modal"
@@ -688,12 +565,13 @@ const Index = (props) => {
         maskStyle={{
           backgroundColor: 'rgba(0,0,0,0.1)',
         }}
-        visible={checkModal}
+        visible={actionModal}
         footer={[
           <Button className="btn-primary" onClick={()=>{
-            setCheckPlayer([])
-            setCheckModal(false)
-            setCheckResult(null)
+            setActionPlayer([])
+            setActionModal(false)
+            setActionResult(null)
+            setCurrentAction('')
           }}>
             关闭
           </Button>
@@ -702,7 +580,7 @@ const Index = (props) => {
         <div className="content-wrap">
           <div className="content-view">
             {
-              checkPlayer.map(item=>{
+              actionPlayer.map(item=>{
                 return (
                   <div
                     className={cls({
@@ -718,7 +596,7 @@ const Index = (props) => {
                       'normal-text': !item.check,
                       'mar-t20': !item.check || item.isTarget
                     })}>
-                      {item.position + '号玩家' + (item.isSelf ? '(我)' : '')}
+                      {item.position + '号' + (item.isSelf ? '(我)' : '')}
                     </div>
                     <div className={cls({
                       'txt': true,
@@ -728,101 +606,15 @@ const Index = (props) => {
                       {item.name}
                     </div>
                     {
-                      (item.check && !item.isTarget) ? (<Button size="small"
-                                            onClick={()=>{checkPlayerAction(item)}}
-                                            className="btn-primary">
-                        查看他的身份
-                      </Button>) : null
+                      item.check && !item.isTarget ?
+                        <Button size="small"
+                                onClick={()=>{playerAction(item, currentAction)}}
+                                className={modalDescMap[currentAction] ? modalDescMap[currentAction].className : ''}>
+                          {modalDescMap[currentAction] ? modalDescMap[currentAction].buttonText : ''}
+                        </Button> : null
                     }
                     {
-                      (item.camp !== null && item.camp !== undefined) ? (
-                        <div className={cls({
-                          'camp-tag': true,
-                          'bg-green': item.camp === 1,
-                          'bg-red': item.camp !== 1
-                        })}>
-                          {item.camp === 1 ? '好人阵营' : '狼人阵营'}
-                        </div>
-                      ) : null
-                    }
-                  </div>
-                )
-              })
-            }
-          </div>
-          {
-            checkResult ? (
-              <div className="result-view FBH FBAC mar-t10 mar-l20 mar-r20">
-                <div className="tit w-70">查验结果：</div>
-                <div className="content">
-                  <div>
-                    <span>{checkResult.position + '号玩家（' + checkResult.name + ')的身份是：'}</span>
-                    <span className="color-red bolder">{checkResult.campName}</span>
-                  </div>
-                </div>
-              </div>
-            ) : null
-          }
-        </div>
-      </Modal>
-
-      <Modal
-        title="袭击玩家"
-        centered
-        closable={false}
-        className="modal-view-wrap player-click-modal"
-        maskClosable={false}
-        maskStyle={{
-          backgroundColor: 'rgba(0,0,0,0.1)',
-        }}
-        visible={assaultModal}
-        footer={[
-          <Button className="btn-primary" onClick={()=>{
-            setAssaultPlayer([])
-            setAssaultModal(false)
-            setAssaultResult(null)
-          }}>
-            关闭
-          </Button>
-        ]}
-      >
-        <div className="content-wrap">
-          <div className="content-view">
-            {
-              assaultPlayer.map(item=>{
-                return (
-                  <div
-                    className={cls({
-                      'player-cell FBV FBAC FBJC': true,
-                      'check-item': item.check && !item.isTarget,
-                      'normal-item': !item.check && !item.isTarget,
-                      'target-item': item.isTarget
-                    })}
-                    key={item.position}>
-                    <div  className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check,
-                      'mar-t20': !item.check || item.isTarget
-                    })}>
-                      {item.position + '号玩家' + (item.isSelf ? '(我)' : '')}
-                    </div>
-                    <div className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check
-                    })}>
-                      {item.name}
-                    </div>
-                    {
-                      (item.check && !item.isTarget) ? (<Button size="small"
-                                                                onClick={()=>{assaultPlayerAction(item)}}
-                                                                className="btn-folk">
-                        袭击他
-                      </Button>) : null
-                    }
-                    {
-                      (item.camp !== null && item.camp !== undefined) ? (
+                      item.roleName !== null && item.roleName !== undefined && item.roleName !== '' ? (
                         <div className={cls({
                           'camp-tag': true,
                           'bg-green': item.camp === 1,
@@ -830,7 +622,21 @@ const Index = (props) => {
                         })}>
                           {item.roleName}
                         </div>
-                      ) : null
+                      ) : (
+                        <>
+                          {
+                            item.camp !== null && item.camp !== undefined ? (
+                              <div className={cls({
+                                'camp-tag': true,
+                                'bg-green': item.camp === 1,
+                                'bg-red': item.camp !== 1
+                              })}>
+                                {item.camp === 1 ? '好人阵营' : '狼人阵营'}
+                              </div>
+                            ) : null
+                          }
+                        </>
+                      )
                     }
                   </div>
                 )
@@ -838,252 +644,29 @@ const Index = (props) => {
             }
           </div>
           {
-            assaultResult ? (
-              <div className="result-view FBH FBAC mar-t10 mar-l20 mar-r20">
-                <div className="tit w-70">袭击结果：</div>
-                <div className="content">
+            actionResult ? (
+              <div className="result-view mar-t10 mar-l20 mar-r20">
+                <div className="tit">{modalDescMap[currentAction] ? modalDescMap[currentAction].resultTitle : ''}</div>
+                <div className="content FBH FBAC FBJC">
                   <div>
-                    <span>{'你袭击了'}</span>
-                    <span className="color-red">{assaultResult.position + '号玩家（' + assaultResult.name + ')。'}</span>
-                  </div>
-                </div>
-              </div>
-            ) : null
-          }
-        </div>
-      </Modal>
-
-      <Modal
-        title="投票"
-        centered
-        closable={false}
-        className="modal-view-wrap player-click-modal"
-        maskClosable={false}
-        maskStyle={{
-          backgroundColor: 'rgba(0,0,0,0.1)',
-        }}
-        visible={voteModal}
-        footer={[
-          <Button className="btn-primary" onClick={()=>{
-            setVotePlayer([])
-            setVoteModal(false)
-            setVoteResult(null)
-          }}>
-            关闭
-          </Button>
-        ]}
-      >
-        <div className="content-wrap">
-          <div className="content-view">
-            {
-              votePlayer.map(item=>{
-                return (
-                  <div
-                    className={cls({
-                      'player-cell FBV FBAC FBJC': true,
-                      'check-item': item.check && !item.isTarget,
-                      'normal-item': !item.check && !item.isTarget,
-                      'target-item': item.isTarget
-                    })}
-                    key={item.position}>
-                    <div  className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check,
-                      'mar-t20': !item.check || item.isTarget
-                    })}>
-                      {item.position + '号玩家' + (item.isSelf ? '(我)' : '')}
-                    </div>
-                    <div className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check
-                    })}>
-                      {item.name}
-                    </div>
                     {
-                      (item.check && !item.isTarget) ? (<Button size="small"
-                                                                onClick={()=>{votePlayerAction(item)}}
-                                                                className="btn-primary">
-                        投票
-                      </Button>) : null
+                      currentAction === 'check' ?  (
+                        <>
+                          <span className="color-green bolder">{actionResult.position + '号玩家（' + actionResult.name + ')'}</span>
+                          <span>的身份是：</span>
+                          <span className={cls({
+                            'bolder': true,
+                            'bg-green': actionResult.camp === 1,
+                            'bg-red': actionResult.camp !== 1
+                          })}>{actionResult.campName}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{modalDescMap[currentAction] ? modalDescMap[currentAction].resultDesc : ''}</span>
+                          <span className="color-red bolder">{actionResult.position + '号玩家（' + actionResult.name + ')'}</span>
+                        </>
+                      )
                     }
-                  </div>
-                )
-              })
-            }
-          </div>
-          {
-            voteResult ? (
-              <div className="result-view FBH FBAC mar-t10 mar-l20 mar-r20">
-                <div className="tit w-70">投票结果：</div>
-                <div className="content">
-                  <div>
-                    <span>{'你投给了'}</span>
-                    <span className="color-red">{voteResult.position + '号玩家（' + voteResult.name + ')'}</span>
-                  </div>
-                </div>
-              </div>
-            ) : null
-          }
-        </div>
-      </Modal>
-
-      <Modal
-        title="使用毒药"
-        centered
-        closable={false}
-        className="modal-view-wrap player-click-modal"
-        maskClosable={false}
-        maskStyle={{
-          backgroundColor: 'rgba(0,0,0,0.1)',
-        }}
-        visible={poisonModal}
-        footer={[
-          <Button className="btn-primary" onClick={()=>{
-            setPoisonPlayer([])
-            setPoisonModal(false)
-            setPoisonResult(null)
-          }}>
-            关闭
-          </Button>
-        ]}
-      >
-        <div className="content-wrap">
-          <div className="content-view">
-            {
-              poisonPlayer.map(item=>{
-                return (
-                  <div
-                    className={cls({
-                      'player-cell FBV FBAC FBJC': true,
-                      'check-item': item.check && !item.isTarget,
-                      'normal-item': !item.check && !item.isTarget,
-                      'target-item': item.isTarget
-                    })}
-                    key={item.position}>
-                    <div  className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check,
-                      'mar-t20': !item.check || item.isTarget
-                    })}>
-                      {item.position + '号玩家' + (item.isSelf ? '(我)' : '')}
-                    </div>
-                    <div className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check
-                    })}>
-                      {item.name}
-                    </div>
-                    {
-                      (item.check && !item.isTarget) ? (<Button size="small"
-                                                                onClick={()=>{poisonPlayerAction(item)}}
-                                                                className="btn-error">
-                        毒他
-                      </Button>) : null
-                    }
-                  </div>
-                )
-              })
-            }
-          </div>
-          {
-            poisonResult ? (
-              <div className="result-view FBH FBAC mar-t10 mar-l20 mar-r20">
-                <div className="tit w-70">毒药结果：</div>
-                <div className="content">
-                  <div>
-                    <span>{'你毒死了'}</span>
-                    <span className="color-red">{poisonResult.position + '号玩家（' + poisonResult.name + ')'}</span>
-                  </div>
-                </div>
-              </div>
-            ) : null
-          }
-        </div>
-      </Modal>
-
-      <Modal
-        title="开枪"
-        closable={false}
-        centered
-        className="modal-view-wrap player-click-modal"
-        maskClosable={false}
-        maskStyle={{
-          backgroundColor: 'rgba(0,0,0,0.1)',
-        }}
-        visible={shootModal}
-        footer={[
-          <Button className="btn-primary" onClick={()=>{
-            setShootPlayer([])
-            setShootModal(false)
-            setShootResult(null)
-          }}>
-            关闭
-          </Button>
-        ]}
-      >
-        <div className="content-wrap">
-          <div className="content-view">
-            {
-              shootPlayer.map(item=>{
-                return (
-                  <div
-                    className={cls({
-                      'player-cell FBV FBAC FBJC': true,
-                      'check-item': item.check && !item.isTarget,
-                      'normal-item': !item.check && !item.isTarget,
-                      'target-item': item.isTarget
-                    })}
-                    key={item.position}>
-                    <div  className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check,
-                      'mar-t20': !item.check || item.isTarget
-                    })}>
-                      {item.position + '号玩家' + (item.isSelf ? '(我)' : '')}
-                    </div>
-                    <div className={cls({
-                      'txt': true,
-                      'check-text': item.check,
-                      'normal-text': !item.check
-                    })}>
-                      {item.name}
-                    </div>
-                    {
-                      (item.check && !item.isTarget) ? (<Button size="small"
-                                                                onClick={()=>{shootPlayerAction(item)}}
-                                                                className="btn-warning">
-                        开枪
-                      </Button>) : null
-                    }
-                    {
-                      (item.camp !== null && item.camp !== undefined) ? (
-                        <div className={cls({
-                          'camp-tag': true,
-                          'bg-green': item.camp === 1,
-                          'bg-red': item.camp !== 1
-                        })}>
-                          {item.roleName}
-                        </div>
-                      ) : null
-                    }
-                  </div>
-                )
-              })
-            }
-          </div>
-          {
-            shootResult ? (
-              <div className="result-view FBH FBAC mar-t10 mar-l20 mar-r20">
-                <div className="tit w-70">开枪结果：</div>
-                <div className="content">
-                  <div>
-                    <span>{'你开枪带走了'}</span>
-                    <span className="color-red">{shootResult.position + '号玩家（' + shootResult.name + ')。'}</span>
                   </div>
                 </div>
               </div>

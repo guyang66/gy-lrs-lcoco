@@ -605,7 +605,6 @@ module.exports = app => ({
       name: targetPlayer.name,
       position: targetPlayer.position,
     }
-
     ctx.body = $helper.Result.success(r)
   },
 
