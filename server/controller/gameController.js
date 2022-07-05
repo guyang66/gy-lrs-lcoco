@@ -333,7 +333,7 @@ module.exports = app => ({
     if(gameInstance.status === 1){
       query.isCommon = 1
     }
-    //todo:
+
     let recordList = await $service.baseService.query(record, query, {} , {sort: {id: -1}})
     let tagMap = {}
 
@@ -895,9 +895,6 @@ module.exports = app => ({
       action: 'poison',
     }
     await $service.baseService.save(action, actionObject)
-
-    // todo: 不能在这个阶段判死玩家，不然刷新状态就知道了，得在3~4阶段判定
-
     let r = {
       username: targetPlayer.username,
       name: targetPlayer.name,

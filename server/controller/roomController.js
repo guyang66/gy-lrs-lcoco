@@ -273,7 +273,6 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'座位号不能为空！')
       return
     }
-    //todo: 该房间是该房主创建才能t人
     let roomInstance = await $service.baseService.queryById(room, id)
     let currentUser = await $service.baseService.userInfo(ctx)
     if(roomInstance.owner !== currentUser.username){

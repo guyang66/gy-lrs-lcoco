@@ -1,16 +1,20 @@
 import React,  {useState}  from "react";
 import "./index.styl";
-import {Button, Input, message, Modal} from "antd";
-import cls from "classnames";
-import helper from '@helper'
+
 import {inject, observer} from "mobx-react";
 import {withRouter} from "react-router-dom";
 
 import apiRoom from '@api/room'
+import apiGame from '@api/game'
+
+import cls from "classnames";
+import helper from '@helper'
+
+import {Button, Input, message, Modal} from "antd";
 
 const Ready = (props) => {
-  const { appStore,seat,seatIn,roomDetail,startGame } = props
-  const {user} = appStore
+  const { appStore, seat, roomDetail } = props
+  const { user } = appStore
 
   const [modifyModal, setModifyModal] = useState(false)
   const [newName, setNewName] = useState(null)
@@ -25,6 +29,12 @@ const Ready = (props) => {
       message.success('修改成功！')
       setModifyModal(false)
       setNewName(null)
+    })
+  }
+
+  const seatIn = (index) => {
+    apiRoom.seatIn({id: roomDetail._id, position: index}).then(data=>{
+      message.success('入座成功！')
     })
   }
 
@@ -44,8 +54,15 @@ const Ready = (props) => {
     })
   }
 
+  const startGame = () => {
+    apiGame.startGame({id: roomDetail._id}).then(data=>{
+      message.success('新游戏开始！')
+    })
+  }
+
+
   return (
-    <div className="room-content">
+    <div className="room-content-wrap">
       <div className="normal-title">桌/座位（点击空座位即可入座）：</div>
       <div className="desk-view-wrap mar-t5">
         {

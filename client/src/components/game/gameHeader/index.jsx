@@ -1,12 +1,28 @@
 import React from "react";
 import "./index.styl";
 import helper from '@helper'
-import {Button} from "antd";
+import apiGame from '@api/game'
+
+import {Button, message} from "antd";
 import {inject, observer} from "mobx-react";
 import {withRouter} from "react-router-dom";
 
 const Head = (props) => {
-  const { appStore, roomDetail, gameDetail, gameDestroy } = props
+  const { appStore, roomDetail, gameDetail } = props
+  const gameDestroy = () => {
+    confirm(
+      {
+        title: '确定要结束游戏吗？',
+        okText: '确定',
+        cancelText: '取消',
+        onOk() {
+          apiGame.gameDestroy({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
+            message.success('操作成功')
+          })
+        }
+      }
+    )
+  }
   return (
     <div className="game-header-wrap">
       <div className="FBH FBAC FBJC">

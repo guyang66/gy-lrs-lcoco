@@ -6,7 +6,6 @@ module.exports = app => ({
   async getRoute(ctx) {
     const { $service, $helper } = app
     let r = await $service.routeService.getRoute()
-    //todo: 只有成功的return 都要加try catch 处理错误
     ctx.body = $helper.Result.success(r)
   },
 

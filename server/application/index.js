@@ -87,7 +87,10 @@ class Application {
 
     // 将ctx注入到app上
     this.$app.use(async (ctx, next) => {
-      //todo: 初步判断是因为中间件设置了ctx，两次请求进来先设置ctx，因为几乎是同一时间，导致第二次直接覆盖了第一次的值，所以2次请求的处理均使用了第二次的值，造出返回值错乱
+      //todo: bug！！！ 返回值错乱。
+      // 因为中间件设置了ctx，两次请求进来先设置ctx，因为几乎是同一时间，导致第二次直接覆盖了第一次的值，所以2次请求走到下一个中间件的处理均使用了第二次的ctx值，造出返回值错乱
+      // 解决方案：1、controller使用args中的ctx，调用service的时候传递把ctx传递给service
+      // 解放方案：2、使用eggjs的思路，controller和service抽象到class中，controller是中间件方法，可以直接初始化，service则需要懒加载（被调用的时候再初始化ctx，保证ctx是当前调用者上下文）
       this.ctx = ctx;
       await next()
     })

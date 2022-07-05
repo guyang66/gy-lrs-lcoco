@@ -14,6 +14,7 @@ import PlayerRoleView from "@components/game/playerRoleInfo";
 import RecordView from "@components/game/gameRecord";
 
 import Websocket from 'react-websocket';
+
 import predictor from "@assets/images/role/card/yuyanjia.png"
 import hunter from "@assets/images/role/card/lieren.png"
 import witch from "@assets/images/role/card/nvwu.png"
@@ -122,11 +123,6 @@ const Index = (props) => {
     })
   }
 
-  const seatIn = (index) => {
-    apiRoom.seatIn({id: roomId, position: index}).then(data=>{
-      message.success('入座成功！')
-    })
-  }
 
   const initSeat = (detail) => {
     if(!detail.seat){
@@ -159,13 +155,6 @@ const Index = (props) => {
     }
   }
 
-
-
-
-  const startGame = () => {
-    apiGame.startGame({id: roomId}).then(data=>{
-    })
-  }
 
   const quitRoom = () => {
     if(!roomId){
@@ -524,21 +513,6 @@ const Index = (props) => {
     setRoleCard(roleCardView)
   }
 
-  const gameDestroy = () => {
-    confirm(
-      {
-        title: '确定要结束游戏吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          apiGame.gameDestroy({roomId: gameDetail.roomId, gameId: gameDetail._id}).then(data=>{
-            message.success('操作成功')
-          })
-        }
-      }
-    )
-  }
-
   const gameAgain = () => {
     confirm(
       {
@@ -591,8 +565,6 @@ const Index = (props) => {
   }
 
   const wsMessage = (msg) => {
-    // todo: 返回 action、username，同一个人则不处理消息
-    // todo: ws url有跨域问题
     if(msg === 'refreshRoom'){
       if(socketOn){
         getRoomDetail()
@@ -606,7 +578,6 @@ const Index = (props) => {
         // 关闭所有的弹窗
         setAssaultModal(false)
         setRecordModal(false)
-        setModifyModal(false)
         setCheckModal(false)
         setShootModal(false)
         setPoisonModal(false)
@@ -616,7 +587,6 @@ const Index = (props) => {
     } else if (msg === 'reStart'){
       setAssaultModal(false)
       setRecordModal(false)
-      setModifyModal(false)
       setCheckModal(false)
       setShootModal(false)
       setPoisonModal(false)
@@ -672,9 +642,9 @@ const Index = (props) => {
 
         <Websocket url={'ws://' + utils.getWsUrl() + ':6003/lrs/' + roomId} onMessage={wsMessage} />
 
-        <GameHeaderView roomDetail={roomDetail} gameDetail={gameDetail} gameDestroy={gameDestroy} />
+        <GameHeaderView roomDetail={roomDetail} gameDetail={gameDetail} />
 
-        { roomDetail.status === 0 ? <GameReadyView seat={seat} seatIn={seatIn} roomDetail={roomDetail} startGame={startGame} /> : null }
+        { roomDetail.status === 0 ? <GameReadyView seat={seat} roomDetail={roomDetail} /> : null }
 
         {
           roomDetail.status === 1 ? (
@@ -838,6 +808,7 @@ const Index = (props) => {
         }
 
         <GameFooterView quitRoom={quitRoom}/>
+
         {
           gameDetail._id ? (
             <div

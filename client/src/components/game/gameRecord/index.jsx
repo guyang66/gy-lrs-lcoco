@@ -17,7 +17,6 @@ import arrow5 from "@assets/images/arrow-pink.svg"
 import arrow6 from "@assets/images/arrow-orange.svg"
 import emptyIcon from "@assets/images/empty.svg"
 
-
 const Record = (props) => {
   const { gameRecord } = props
 
