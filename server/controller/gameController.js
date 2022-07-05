@@ -308,7 +308,6 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(r.errorCode, r.errorMessage)
       return
     }
-
     ctx.body = $helper.Result.success('操作成功！')
   },
 
@@ -1276,7 +1275,7 @@ module.exports = app => ({
    * @returns {Promise<void>}
    */
   async gameDestroy (ctx) {
-    const { $service, $helper, $model, $ws } = app
+    const { $service, $helper, $model, $ws, $nodeCache } = app
     const { game, record, room } = $model
     const { roomId, gameId } = ctx.query
     if(!roomId || roomId === ''){
@@ -1309,6 +1308,22 @@ module.exports = app => ({
       isTitle: 0
     }
     await $service.baseService.save(record, gameRecord)
+
+    if(app.timer){
+      $nodeCache.set('game-time-' + gameInstance._id, -1)
+      clearInterval(app.timer)
+      let data = {
+        'refreshGame': false,
+        time: 0,
+      }
+      $ws.connections.forEach(function (conn) {
+        let url = '/lrs/' + gameInstance.roomId
+        if(conn.path === url){
+          conn.sendText(JSON.stringify(data))
+        }
+      })
+    }
+
     $ws.connections.forEach(function (conn) {
       let url = '/lrs/' + gameInstance.roomId
       if(conn.path === url){

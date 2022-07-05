@@ -348,6 +348,12 @@ const Index = (props) => {
       }
     } else if (msg === 'refreshGame') {
       initGame(gameDetail._id, roomDetail._id)
+    } else if (msg === 'stageChange') {
+      setActionModal(false)
+      setActionPlayer([])
+      setCurrentAction('')
+      setActionResult(null)
+      initGame(gameDetail._id, roomDetail._id)
     } else if (msg === 'gameStart'){
       getRoomDetail(true)
     } else if (msg === 'gameOver') {

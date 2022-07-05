@@ -1017,7 +1017,7 @@ module.exports = app => ({
     $ws.connections.forEach(function (conn) {
       let url = '/lrs/' + gameInstance.roomId
       if(conn.path === url){
-        conn.sendText('refreshGame')
+        conn.sendText('stageChange')
       }
     })
 
