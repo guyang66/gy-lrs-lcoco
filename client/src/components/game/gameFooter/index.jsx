@@ -5,7 +5,7 @@ import {Button} from "antd";
 const Footer = (props) => {
   const { quitRoom } = props
   return (
-    <div className="footer">
+    <div className="footer-wrap">
       <Button
         className="logout-btn btn-delete"
         size="large"

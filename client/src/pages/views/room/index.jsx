@@ -10,7 +10,9 @@ import {Button, Modal, message} from "antd";
 import GameHeaderView from "@components/game/gameHeader";
 import GameFooterView from "@components/game/gameFooter";
 import GameReadyView from "@components/game/gameReady";
-import PlayerRoleView from "@components/game/playerRoleInfo";
+import GameContentView from "@components/game/gameContent";
+import GameBtnView from "@components/game/gameButton";
+
 import RecordView from "@components/game/gameRecord";
 
 import Websocket from 'react-websocket';
@@ -24,7 +26,6 @@ import vote from "@assets/images/role/skill/vote.svg"
 import loser from "@assets/images/shibai.svg"
 
 import utils from '@utils'
-import helper from '@helper'
 import cls from "classnames";
 
 const { confirm, info } = Modal;
@@ -123,7 +124,6 @@ const Index = (props) => {
     })
   }
 
-
   const initSeat = (detail) => {
     if(!detail.seat){
       let p = []
@@ -153,6 +153,15 @@ const Index = (props) => {
       })
       setSeat(p)
     }
+  }
+
+  const initRecordList = (data) => {
+    let tmp = []
+    for(let key in data){
+      tmp.push(data[key])
+    }
+    setGameRecord(tmp)
+    setRecordModal(true)
   }
 
 
@@ -190,14 +199,6 @@ const Index = (props) => {
     })
   }
 
-  const initRecordList = (data) => {
-    let tmp = []
-    for(let key in data){
-      tmp.push(data[key])
-    }
-    setGameRecord(tmp)
-    setRecordModal(true)
-  }
 
   const useSkill = (key) => {
     if(key === 'check'){
@@ -513,20 +514,6 @@ const Index = (props) => {
     setRoleCard(roleCardView)
   }
 
-  const gameAgain = () => {
-    confirm(
-      {
-        title: '确定要再来一句游戏吗？',
-        okText: '确定',
-        cancelText: '取消',
-        onOk() {
-          apiGame.gameAgain({roomId: roomId, gameId: gameDetail._id}).then(data=>{
-            message.success('创建成功！')
-          })
-        }
-      }
-    )
-  }
 
   const showWinner = (data) => {
     const config = {
@@ -640,214 +627,35 @@ const Index = (props) => {
     <div className="room-container">
       <div className="room-wrap FBV">
 
+        {/*websocket*/}
         <Websocket url={'ws://' + utils.getWsUrl() + ':6003/lrs/' + roomId} onMessage={wsMessage} />
 
+        {/*header*/}
         <GameHeaderView roomDetail={roomDetail} gameDetail={gameDetail} />
 
+        {/*游戏准备*/}
         { roomDetail.status === 0 ? <GameReadyView seat={seat} roomDetail={roomDetail} /> : null }
 
-        {
-          roomDetail.status === 1 ? (
-            <div className="game-content">
-              <PlayerRoleView currentRole={currentRole} gameDetail={gameDetail} skillInfo={skillInfo} useSkill={useSkill} onOpen={()=>{openRoleCard()}} />
-              <div className="desk-content mar-t10">
-                <div className="title-text mar-t5 FBH FBAC FBJC">
-                  <div className="color-main">{'第' + gameDetail.day + '天'}</div>
-                  <div className="mar-l5">-</div>
-                  <div className="color-red mar-l5">{gameDetail.dayTag}</div>
-                  <div className="mar-l5">-</div>
-                  <div className="color-main mar-l5">{'第' + (gameDetail.stage + 1) + '阶段'}</div>
-                  <div className="color-orange">{'（' + gameDetail.stageName + '）'}</div>
-                  {
-                    timerTime !== null && timerTime > 0 ? <div className="color-black">行动倒计时：</div> : null
-                  }
-                  {
-                    timerTime !== null && timerTime > 0 ? <div className="color-red">{timerTime}</div> : null
-                  }
-                </div>
-                <div className="game-info mar-b10" style={{textAlign: 'center', overflow: 'hidden', position: 'relative', display: 'flex', flexWrap: 'wrap', width: '100%'}}>
-                  <div className="title-text" style={{fontStyle: 'oblique'}}>
-                    {
-                      (gameDetail.broadcast || []).map((item,index)=>{
-                        return (
-                          <span
-                            key={item.text + index}
-                            className={cls({
-                              'color-black': item.level === 1,
-                              'color-red': item.level === 2,
-                              'color-success': item.level === 3,
-                              'color-main': item.level === 4,
-                            })}
-                          >
-                            {item.text}
-                          </span>
-                        )
-                      })
-                    }
-                  </div>
-                </div>
-                {
-                  (playerInfo || []).map(item=>{
-                    return (
-                      <div key={item.position} className="player-cell mar-5 FBH FBAC FBJC">
-                        <div
-                          className={cls({
-                            'bg-light-blue': !item.isSelf,
-                            'bg-pink': item.isSelf,
-                            'player-seat-cell FBV FBAC FBJC': true,
-                          })}>
-                          <div className="txt bolder mar-t20">{item.position + '号'}{item.isSelf ? '(我)' : ''}</div>
-                          <div className="txt bolder color-main">{item.name}</div>
+        {/*游戏进行*/}
+        { roomDetail.status === 1 ? (
+          <GameContentView
+            gameDetail={gameDetail}
+            currentRole={currentRole}
+            skillInfo={skillInfo}
+            openRoleCard={openRoleCard}
+            timerTime={timerTime}
+            actionInfo={actionInfo}
+            playerInfo={playerInfo}
+            useSkill={useSkill}
+          />
+        ) : null }
 
-                          <div className="tag-view">
-                            {
-                              (item.camp !== null && item.camp !== undefined) ? (
-                                <div>
-                                  {
-                                    item.camp === 1 ? <div className="tag camp-good bg-green">好人阵营</div> : <div className="tag camp-wolf bg-red">狼人阵营</div>
-                                  }
-                                </div>
-                              ) : null
-                            }
-                            {
-                              (item.role !== null && item.role !== undefined) ? (
-                                <div className={cls({
-                                    'tag role-name': true,
-                                    'bg-black': item.role === 'wolf',
-                                    'bg-green': item.role === 'villager',
-                                    'bg-gold': item.role === 'predictor',
-                                    'bg-purple': item.role === 'witch',
-                                    'bg-brown': item.role === 'hunter'
-                                  })}>{item.roleName}</div>
-                              ) : null
-                            }
-                          </div>
+        {/*footer*/}
+        <GameFooterView quitRoom={quitRoom} />
 
-                          <div className="dead-view">
-                            {
-                              item.status === 0 ? (
-                                <>
-                                  <div className="dead-mask">
-                                  </div>
-                                  <div className="dead-text">
-                                    出局
-                                  </div>
-                                </>
-                              ) : null
-                            }
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })
-                }
-              </div>
-
-              <div className="mar-t10">
-                <div className="bc-title mar-b5 color-red">游戏小贴士</div>
-                {
-                  (gameDetail.systemTip && gameDetail.systemTip.length > 0) ? (
-                    <div className="notice-content FBV FBJC FBAC">
-                      <div className="txt mar-t5">
-                        {
-                          (gameDetail.systemTip || []).map((item, index)=>{
-                            return (
-                              <span
-                                key={item.text + index}
-                                className={cls({
-                                  'color-black': item.level === 1,
-                                  'color-red': item.level === 2,
-                                  'color-success': item.level === 3,
-                                  'color-main': item.level === 4,
-                                })}
-                              >
-                            {item.text}
-                          </span>
-                            )
-                          })
-                        }
-                      </div>
-                    </div>
-                  ) : null
-                }
-              </div>
-              {
-                gameDetail.status === 1 ? (
-                  <div className="mar-t10 FBH FBAC">
-                    {
-                      actionInfo.map(item=>{
-                        return (
-                          <div key={item.key} className="FBH FBAC" style={{width: '100%'}}>
-                            {
-                              item.show ? (
-                                <Button
-                                  onClick={()=>{
-                                    useSkill(item.key)
-                                  }}
-                                  disabled={!item.canUse}
-                                  className={cls({
-                                    'skill-btn': true,
-                                    'btn-primary': item.key === 'vote' && item.canUse,
-                                    'btn-info': !item.canUse
-                                  })}>
-                                  <img className="vote-icon mar-r5" src={vote}/>
-                                  <span>{item.name}</span>
-                                </Button>
-                              ) : null
-                            }
-                          </div>
-                        )
-                      })
-                    }
-                  </div>
-                ) : null
-              }
-              <div style={{width:'100%', height: '100px'}}/>
-            </div>
-          ) : null
-        }
-
-        <GameFooterView quitRoom={quitRoom}/>
-
-        {
-          gameDetail._id ? (
-            <div
-              onClick={()=>{lookRecord()}}
-              className="btn-primary btn-record">
-              {gameDetail.status === 2 ? '复盘' : '查看记录'}
-            </div>
-          ) : null
-        }
-        {
-          <div
-            onClick={()=>{getRoomDetail()}}
-            className="btn-tag btn-refresh">
-            刷新页面
-          </div>
-        }
-        {
-          helper.hasCPermission('system.host', appStore) && gameDetail._id? (
-            <>
-              {
-                gameDetail.status === 1 ? (
-                  <div
-                    onClick={()=>{nextStage()}}
-                    className="btn-warning btn-next-stage">
-                    下一阶段
-                  </div>
-                ) : (
-                  <div
-                    onClick={()=>{gameAgain()}}
-                    className="btn-success btn-next-stage">
-                    再来一局
-                  </div>
-                )
-              }
-            </>
-          ) : null
-        }
+        {/*悬浮游戏按钮*/}
+        <GameBtnView gameDetail={gameDetail} lookRecord={lookRecord} getRoomDetail={getRoomDetail} nextStage={nextStage} />
       </div>
-
 
       <Modal
         title="游戏事件记录"
@@ -1115,15 +923,6 @@ const Index = (props) => {
                     <span className="color-red">{voteResult.position + '号玩家（' + voteResult.name + ')'}</span>
                   </div>
                 </div>
-              </div>
-            ) : null
-          }
-          {
-            voteResult ? (
-              <div className="prompt-view mar-l20 mar-r20 mar-t10">
-                {
-                  voteResult.prompt
-                }
               </div>
             ) : null
           }

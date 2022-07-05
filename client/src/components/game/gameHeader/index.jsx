@@ -3,9 +3,10 @@ import "./index.styl";
 import helper from '@helper'
 import apiGame from '@api/game'
 
-import {Button, message} from "antd";
+import {Button, message, Modal} from "antd";
 import {inject, observer} from "mobx-react";
 import {withRouter} from "react-router-dom";
+const { confirm } = Modal;
 
 const Head = (props) => {
   const { appStore, roomDetail, gameDetail } = props
