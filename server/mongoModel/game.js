@@ -24,9 +24,9 @@ module.exports = app => {
       saveSelf: { type: Number, default: 1 }, // 女巫自救：0：不能自救，1：仅第一晚能自救，2：任意时间均可自救
       winCondition: { type: Number, default: 0 }, // 胜利条件：0：屠边 1：全屠
       flatTicket: { type: Number, default: 0 }, // 平票怎么处理，0：平票就直接进入黑夜，不pk，1：平票 二者加赛一轮（这里逻辑就不好处理了） 2: 一直pk
-      p1: { type: Number, default: 10 },
-      p2: { type: Number, default: 11 },
-      p3: { type: Number, default: 13 },
+      p1: { type: Number, default: 30 }, // 预言家行动时间
+      p2: { type: Number, default: 45 }, // 狼人行动时间
+      p3: { type: Number, default: 30 }, // 女巫行动时间
       remark: { type: String },
     }), {
       timestamps: { createdAt: 'createTime', updatedAt: 'modifyTime'},

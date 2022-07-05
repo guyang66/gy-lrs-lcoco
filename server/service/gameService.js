@@ -673,7 +673,7 @@ module.exports = app => ({
           content: {
             type: 'action',
             key: 'jump',
-            text: $support.getPlayerFullName(predictorPlayer) + '，女巫空过',
+            text: $support.getPlayerFullName(predictorPlayer) + '，预言家空验',
             actionName: '空验',
             level: 6,
             from: {
@@ -690,6 +690,7 @@ module.exports = app => ({
             }
           }
         }
+        console.log(recordObject.content.from)
         await $service.baseService.save(record, recordObject)
       }
     } else if(stage === 2){

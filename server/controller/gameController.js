@@ -350,6 +350,7 @@ module.exports = app => ({
               username: record.content.from.username,
               name: record.content.from.name,
               position: record.content.from.position,
+              status: record.content.from.status,
               role: gameInstance.status === 1 && record.content.from.role !== 'out' && record.content.from.role !== 'exile' && record.content.action !== 'shoot' ? null : record.content.from.role,
               camp: gameInstance.status === 1 && record.content.from.role !== 'out' && record.content.from.role !== 'exile' && record.content.action !== 'shoot' ? null : record.content.from.camp
             },
@@ -448,7 +449,7 @@ module.exports = app => ({
       return
     }
 
-    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: gameInstance.stage, action: 'check'})
+    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: 1, action: 'check'})
     if(exist){
       ctx.body = $helper.Result.fail(-1,'今天你已使用过查验功能！')
       return
@@ -575,7 +576,7 @@ module.exports = app => ({
       return
     }
 
-    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: gameInstance.stage, action: 'assault'})
+    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: 2, action: 'assault'})
     if(exist){
       ctx.body = $helper.Result.fail(-1,'今天你已使用过袭击功能！')
       return
@@ -793,6 +794,12 @@ module.exports = app => ({
       return
     }
 
+    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: 6, action: 'vote'})
+    if(exist){
+      ctx.body = $helper.Result.fail(-1,'今天你已使用过投票功能！')
+      return
+    }
+
     let targetPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: username})
 
     let actionObject = {
@@ -867,7 +874,7 @@ module.exports = app => ({
       return
     }
 
-    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: gameInstance.stage, action: 'poison'})
+    let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: 3, action: 'poison'})
     if(exist){
       ctx.body = $helper.Result.fail(-1,'今天你已使用过毒药功能！')
       return
@@ -1071,7 +1078,6 @@ module.exports = app => ({
       }
     }
     await $service.baseService.save(record, deadRecord)
-
     await $service.baseService.updateById(player, targetPlayer._id,{status: 0, outReason: 'shoot'})
     await $service.gameService.settleGameOver(gameInstance._id)
 
@@ -1202,7 +1208,6 @@ module.exports = app => ({
     }
     await $service.baseService.save(gameTag, tagObject)
     await $service.baseService.updateById(player, currentPlayer._id,{status: 0, outReason: 'boom'})
-    // 判断游戏结束没有 todo: 游戏结束还有后续流程没走完
     let gameResult = await $service.gameService.settleGameOver(gameInstance._id)
     if(gameResult.result && gameResult.data === 'N'){
       // 游戏未结束，增加record
@@ -1260,7 +1265,6 @@ module.exports = app => ({
     ctx.body = $helper.Result.success(result)
   },
 
-
   async gameDestroy (ctx) {
     const { $service, $helper, $model, $ws } = app
     const { game, record, room } = $model
@@ -1287,7 +1291,6 @@ module.exports = app => ({
     let update = {status: 3}
     await $service.baseService.updateById(game, gameInstance._id, update)
 
-
     let gameRecord = {
       roomId: roomInstance._id,
       gameId: gameInstance._id,
@@ -1307,7 +1310,7 @@ module.exports = app => ({
 
   async gameAgain (ctx) {
     const { $service, $helper, $model, $ws } = app
-    const { game, record, room } = $model
+    const { game, room } = $model
     const { roomId, gameId } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -1328,12 +1331,12 @@ module.exports = app => ({
       return
     }
 
-    // 重置掉当前局
+    // 重置掉当前局, 就是简单的清掉gameId即可，然后
     let update = {
       status: 0,
       gameId: null
     }
-    await $service.baseService.updateById(room, roomInstance._id,update)
+    await $service.baseService.updateById(room, roomInstance._id, update)
     $ws.connections.forEach(function (conn) {
       let url = '/lrs/' + roomInstance._id
       if(conn.path === url){

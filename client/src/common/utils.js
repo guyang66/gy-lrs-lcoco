@@ -1,5 +1,5 @@
-import menusIcon from "@config/menu-icon"
-
+// import menusIcon from "@config/menu-icon"
+import config from '@config'
 const getCurrentDate = (t, symbol = '-') =>{
   if(!t){
     t = new Date()
@@ -56,8 +56,8 @@ const getDateDir = (t) => {
   return getCurrentDate(t, '')  + (h < 10 ? (`0${  h}`) : h) + (m < 10 ? (`0${  m}`) : m ) + (s < 10 ? (`0${  s}`) : s)
 }
 
-const getMenuIconByKey = (key) => {
-  return menusIcon[key] || menusIcon.default
+const getMenuIconByKey = () => {
+  return ''
 }
 
 const verifyEmailFormat = (email) => {
@@ -92,6 +92,13 @@ const getFixUrl = (url) => {
   return  `${  window.location.origin  }${url}`
 }
 
+const getWsUrl = () => {
+  if(process.env.NODE_ENV === 'production'){
+    return config.websocket.prd
+  }
+  return config.websocket.dev
+}
+
 export default  {
   getMenuIconByKey,
   getCurrentDate,
@@ -101,4 +108,5 @@ export default  {
   verifyPhoneFormat,
   getFixUrl,
   getDateString,
+  getWsUrl
 }

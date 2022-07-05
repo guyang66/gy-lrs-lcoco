@@ -21,11 +21,11 @@
       "pass": ""
     },
     "prd": {
-      "servername": "",
-      "database": "",
-      "port": "",
-      "user": "",
-      "pass": ""
+      "servername": "localhost",
+      "database": "lrs",
+      "port": 27017,
+      "user": "lrs_admin",
+      "pass": "123456"
     }
   },
   "schedule": {
