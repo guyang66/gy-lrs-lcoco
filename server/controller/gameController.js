@@ -8,10 +8,13 @@ module.exports = app => ({
     const { $service, $helper, $model, $constants, $support,$ws } = app
     const { room, game, user, player, vision, record } = $model
     const { gameModeMap, skillMap } = $constants
-    const { id } = ctx.query
+    let { id, setting } = ctx.request.body
     if(!id || id === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
       return
+    }
+    if(!setting){
+      setting = {}
     }
     let roomInstance = await $service.baseService.queryById(room, id)
     let currentUser = await $service.baseService.userInfo(ctx)
@@ -57,8 +60,13 @@ module.exports = app => ({
       v8: roomInstance.v8,
       v9: roomInstance.v9,
       playerCount: 9,
+      p1: setting.p1 || 30,
+      p2: setting.p2 || 45,
+      p3: setting.p3 || 30,
+      witchSaveSelf: setting.witchSaveSelf || 2,
       mode: 'standard_9' // 标准9人局
     }
+
     // 创建游戏实例
     let gameInstance = await $service.baseService.save(game, gameObject)
 
@@ -296,10 +304,9 @@ module.exports = app => ({
     }
 
     // 如果手动进入下一回合，需要清掉定时器
-    //todo: bug 如果多场游戏同时进行，这里timer会混乱，
-    if(app.timer){
+    if(app.$timer[gameInstance._id]){
       $nodeCache.set('game-time-' + gameInstance._id, -1)
-      clearInterval(app.timer)
+      clearInterval(app.$timer[gameInstance._id])
     }
     await $helper.wait(200)
 
@@ -1309,9 +1316,9 @@ module.exports = app => ({
     }
     await $service.baseService.save(record, gameRecord)
 
-    if(app.timer){
+    if(app.$timer[gameInstance._id]){
       $nodeCache.set('game-time-' + gameInstance._id, -1)
-      clearInterval(app.timer)
+      clearInterval(app.$timer[gameInstance._id])
       let data = {
         'refreshGame': false,
         time: 0,

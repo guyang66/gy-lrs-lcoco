@@ -17,7 +17,7 @@ import {Button} from "antd";
 import cls from "classnames";
 
 const RoleView = (props) => {
-  const { gameDetail,skillInfo, currentRole, useSkill, onOpen } = props
+  const { gameDetail, skillInfo, currentRole, useSkill, onOpen } = props
   const roleImgMap = {
     'villager': villager,
     'predictor': predictor,
@@ -42,7 +42,7 @@ const RoleView = (props) => {
                onClick={onOpen}
                src={roleImgMap[currentRole.role]} />
           {
-            currentRole.status === 0 ? (
+            currentRole.status === 0 && gameDetail.status === 1 ? (
               <>
                 <div className="dead-mask" />
                 <div className="dead-text">死 亡</div>

@@ -118,7 +118,11 @@ module.exports = app => ({
         if(poisonAction){
           useStatus = false
         }
-        if(killAction && gameInstance.day !== 1){
+        if(gameInstance.witchSaveSelf === 3){
+          useStatus = false
+        }
+
+        if(gameInstance.witchSaveSelf === 2 && killAction && gameInstance.day !== 1){
           // 首页之后不能自救
           if(currentPlayer.username === killAction.to){
             useStatus = false
@@ -296,7 +300,7 @@ module.exports = app => ({
    */
   async getSystemTips  (ctx, id) {
     const { $service, $helper, $model, $support } = app
-    const { game, player, action, gameTag } = $model
+    const { game, player, action } = $model
     if(!id){
       return $helper.wrapResult(false, 'gameId为空！', -1)
     }
@@ -386,9 +390,12 @@ module.exports = app => ({
       if(antidoteSkill && antidoteSkill.status === 1 && currentPlayer.status === 1){
         info.push({text: '昨晚死亡的是', level: 1})
         info.push({text: $support.getPlayerFullName(diePlayer), level: 2,})
-        if(killAction.to === currentPlayer.username && gameInstance.day !== 1){
+        if(killAction.to === currentPlayer.username && gameInstance.day !== 1 && gameInstance.witchSaveSelf === 2){
           info.push({text: '，女巫非首页不能自救，', level: 2,})
-          info.push({text: '请选择是否使用', level: 1})
+          info.push({text: '请选择是否', level: 1})
+        } else if (gameInstance.witchSaveSelf === 3) {
+          info.push({text: '，女巫不能自救，', level: 2,})
+          info.push({text: '请选择是否', level: 1})
         } else {
           info.push({text: '，', level: 1})
           info.push({text: '请选择使用', level: 1})
@@ -1034,11 +1041,11 @@ module.exports = app => ({
       }
 
       $nodeCache.set('game-time-' + gameInstance._id, t)
-      app.timer = setInterval(function (){
+      app.$timer[gameInstance._id] = setInterval(function (){
         let time =  $nodeCache.get('game-time-' + gameInstance._id)
         if(time < 0){
           // 清掉定时器
-          clearInterval(app.timer)
+          clearInterval(app.$timer[gameInstance._id])
           $service.gameService.moveToNextStage(gameInstance._id)
         } else {
           $nodeCache.set('game-time-' + gameInstance._id, time - 1)

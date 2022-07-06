@@ -12,8 +12,8 @@ module.exports = {
   ],
   // antd 主题配置
   antdThemeConfig: {
-    '@primary-color': '#2466FF', // 全局主色
-    '@link-color': '#2466FF', // 链接色
+    '@primary-color': '#4169E1', // 全局主色
+    '@link-color': '#4169E1', // 链接色
     '@font-size-base': '12px',
   },
 

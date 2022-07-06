@@ -305,6 +305,10 @@ const Index = (props) => {
     setRoleCard(roleCardView)
   }
 
+  const clearGame = () => {
+    setGameDetail({})
+  }
+
   const showWinner = (data) => {
     const config = {
       okText: '确定',
@@ -432,7 +436,7 @@ const Index = (props) => {
         <GameFooterView quitRoom={quitRoom} />
 
         {/*悬浮游戏按钮*/}
-        <GameBtnView gameDetail={gameDetail} lookRecord={lookRecord} getRoomDetail={getRoomDetail} />
+        <GameBtnView gameDetail={gameDetail} lookRecord={lookRecord} getRoomDetail={getRoomDetail} clearGame={clearGame} />
       </div>
 
       <Modal

@@ -54,7 +54,7 @@ const Footer = (props) => {
                 <div
                   className={cls({
                     'bg-light-blue': !item.isSelf,
-                    'bg-pink': item.isSelf,
+                    'bg-orange': item.isSelf,
                     'player-seat-cell FBV FBAC FBJC': true,
                   })}>
                   <div className="txt bolder mar-t20">{item.position + '号'}{item.isSelf ? '(我)' : ''}</div>

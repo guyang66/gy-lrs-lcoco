@@ -2,11 +2,11 @@ import fetch from '@common/fetch'
 const urlPrefix = '/api/'
 export default {
 
-  startGame (params) {
+  startGame (param) {
     return fetch({
       url: urlPrefix + 'game/start/auth',
-      method: 'get',
-      params,
+      method: 'post',
+      data: param,
     })
   },
 

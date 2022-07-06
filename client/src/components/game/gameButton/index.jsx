@@ -9,7 +9,7 @@ import {message, Modal} from "antd";
 const { confirm } = Modal;
 
 const Btn = (props) => {
-  const { appStore, gameDetail, lookRecord, getRoomDetail} = props
+  const { appStore, gameDetail, lookRecord, getRoomDetail, clearGame } = props
   const nextStage = () => {
     confirm(
       {
@@ -33,6 +33,7 @@ const Btn = (props) => {
         onOk() {
           apiGame.gameAgain({roomId: gameDetail.roomId}).then(()=>{
             message.success('创建成功！')
+            clearGame()
           })
         }
       }

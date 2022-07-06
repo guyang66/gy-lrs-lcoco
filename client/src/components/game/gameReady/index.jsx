@@ -10,15 +10,34 @@ import apiGame from '@api/game'
 import cls from "classnames";
 import helper from '@helper'
 
-import {Button, Input, message, Modal} from "antd";
+import {Button, Input, message, Modal, Radio} from "antd";
+import {PlusCircleOutlined, MinusCircleOutlined} from '@ant-design/icons';
 
 const Ready = (props) => {
   const { appStore, seat, roomDetail } = props
   const { user } = appStore
 
+
+  const witchSaveOptions = [
+    { label: '均能自救', value: 1 },
+    { label: '首页自救', value: 2 },
+    { label: '不能自救', value: 3 },
+  ];
+
   const [modifyModal, setModifyModal] = useState(false)
   const [newName, setNewName] = useState(null)
+
+  const [settingModal, setSettingModal]= useState(false)
+
+  const [gameSetting, setGameSetting] = useState({
+    p1: 30,
+    p2: 45,
+    p3: 30,
+    witchSaveSelf: 2,
+  })
+
   const [kick, setKick] = useState(false)
+
 
   const modifyName = () => {
     if(!newName || newName === ''){
@@ -55,11 +74,14 @@ const Ready = (props) => {
   }
 
   const startGame = () => {
-    apiGame.startGame({id: roomDetail._id}).then(data=>{
+    apiGame.startGame({id: roomDetail._id, setting: gameSetting}).then(data=>{
       message.success('新游戏开始！')
     })
   }
 
+  const gameSettings = () => {
+    setSettingModal(true)
+  }
 
   return (
     <div className="room-content-wrap">
@@ -133,6 +155,22 @@ const Ready = (props) => {
       }
       {
         helper.hasCPermission('system.host', appStore) ? <Button
+          size="large"
+          className={cls({
+            'btn-success': !!roomDetail.seatStatus,
+            'mar-t10 full-btn': true,
+          })}
+          onClick={
+            ()=>{
+              gameSettings()
+            }
+          }
+        >
+          游戏设置
+        </Button> : null
+      }
+      {
+        helper.hasCPermission('system.host', appStore) ? <Button
           className={cls({
             'btn-danger': !kick,
             'btn-info': kick,
@@ -160,6 +198,8 @@ const Ready = (props) => {
       >
         修改昵称
       </Button>
+
+      <div style={{width: '100%', height: '100px'}}/>
 
       <Modal
         title="修改昵称"
@@ -192,6 +232,68 @@ const Ready = (props) => {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        title={
+          <div className="setting-modal-title color-green">
+            游戏设置
+          </div>
+        }
+        centered
+        className="modal-view-wrap"
+        maskClosable={false}
+        closable={false}
+        width={500}
+        maskStyle={{
+          backgroundColor: 'rgba(0,0,0,0.1)',
+        }}
+        visible={settingModal}
+        footer={[
+          <Button className="btn-primary" onClick={()=>{
+            setSettingModal(false)
+          }}>
+            确定
+          </Button>
+        ]}
+      >
+        <div className="settings">
+          <div className="setting-cell FBH FBAC mar-b10">
+            <div className="item-title">预言家行动时间(秒)：</div>
+            <div className="FBH FBAC FBJC">
+              <MinusCircleOutlined className="icon-font mar-r20" onClick={()=>{setGameSetting({...gameSetting, p1: (gameSetting.p1 - 15 < 15 ? 15 : gameSetting.p1 - 15)})}} />
+              <div className="fake-input">{gameSetting.p1}</div>
+            </div>
+            <PlusCircleOutlined className="icon-font mar-l20" onClick={()=>{setGameSetting({...gameSetting, p1: gameSetting.p1 + 15})}} />
+          </div>
+          <div className="setting-cell FBH FBAC mar-b10">
+            <div className="item-title">狼人行动时间(秒)：</div>
+            <div className="FBH FBAC FBJC">
+              <MinusCircleOutlined className="icon-font mar-r20" onClick={()=>{setGameSetting({...gameSetting, p2: (gameSetting.p2 - 15 < 15 ? 15 : gameSetting.p2 - 15)})}} />
+              <div className="fake-input">{gameSetting.p2}</div>
+            </div>
+            <PlusCircleOutlined className="icon-font mar-l20" onClick={()=>{setGameSetting({...gameSetting, p2: gameSetting.p2 + 15})}} />
+          </div>
+          <div className="setting-cell FBH FBAC mar-b10">
+            <div className="item-title">女巫行动时间(秒)：</div>
+            <div className="FBH FBAC FBJC">
+              <MinusCircleOutlined className="icon-font mar-r20" onClick={()=>{setGameSetting({...gameSetting, p3: (gameSetting.p3 - 15 < 15 ? 15 : gameSetting.p3 - 15)})}} />
+              <div className="fake-input">{gameSetting.p3}</div>
+            </div>
+            <PlusCircleOutlined className="icon-font mar-l20" onClick={()=>{setGameSetting({...gameSetting, p3: gameSetting.p3 + 15})}} />
+          </div>
+          <div className="setting-cell FBH FBAC mar-b10">
+            <div className="item-title">女巫是否能自救：</div>
+            <Radio.Group
+              options={witchSaveOptions}
+              onChange={(e)=>{setGameSetting({...gameSetting, witchSaveSelf: e.target.value})}}
+              value={gameSetting.witchSaveSelf}
+              optionType="button"
+              buttonStyle="solid"
+            />
+          </div>
+        </div>
+      </Modal>
+
     </div>
   )
 }

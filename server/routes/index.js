@@ -22,7 +22,7 @@ module.exports = app => {
   router.get('/api/room/kick/auth', $middleware.auth, $controller.roomController.kickPlayer)
   router.get('/api/room/seat/auth', $middleware.auth, $controller.roomController.sitDown)
 
-  router.get('/api/game/start/auth', $middleware.auth, $controller.gameController.gameStart)
+  router.post('/api/game/start/auth', $middleware.auth, $controller.gameController.gameStart)
   router.get('/api/game/info/auth', $middleware.auth, $controller.gameController.getGameInfo)
   router.get('/api/game/result/auth', $middleware.auth, $controller.gameController.gameResult)
   router.get('/api/game/destroy/auth', $middleware.auth, $controller.gameController.gameDestroy)

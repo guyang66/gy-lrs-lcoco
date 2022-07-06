@@ -326,6 +326,7 @@ module.exports = app => ({
     return $helper.wrapResult(true, '')
   },
 
+
   async beforeSpeak (id) {
     const { $service, $helper, $model, $support } = app
     const { game, player, record, gameTag } = $model

@@ -85,6 +85,9 @@ class Application {
 
     this.$ws = initWs(this)
 
+    // timer表，每个game维护独自的定时器timer，互不影响
+    this.$timer = {}
+
     // 将ctx注入到app上
     this.$app.use(async (ctx, next) => {
       //todo: bug！！！ 返回值错乱。
