@@ -64,6 +64,7 @@ module.exports = app => ({
       p2: setting.p2 || 45,
       p3: setting.p3 || 30,
       witchSaveSelf: setting.witchSaveSelf || 2,
+      winCondition: setting.winCondition || 1,
       mode: 'standard_9' // 标准9人局
     }
 

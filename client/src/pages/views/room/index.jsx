@@ -501,14 +501,15 @@ const Index = (props) => {
                       'normal-text': !item.check,
                       'mar-t20': !item.check || item.isTarget
                     })}>
-                      {item.position + '号' + (item.isSelf ? '(我)' : '')}
+                      {item.position + '号'}
                     </div>
                     <div className={cls({
                       'txt': true,
                       'check-text': item.check,
-                      'normal-text': !item.check
+                      'normal-text': !item.check,
+                      'color-red': item.isSelf
                     })}>
-                      {item.name}
+                      {item.name + (item.isSelf ? '(我)' : '')}
                     </div>
                     {
                       item.check && !item.isTarget ?

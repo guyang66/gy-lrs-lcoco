@@ -22,8 +22,8 @@ module.exports = app => {
       mode: {type: String, default: 'standard_9' }, // 默认标准9人局
       playerCount: { type: Number, default: 9 }, // 默认9个人
       witchSaveSelf: { type: Number, default: 1 }, // 女巫自救：1：能自救，2：仅第一晚能自救，3：不能自救
-      winCondition: { type: Number, default: 0 }, // 胜利条件：0：屠边 1：全屠
-      flatTicket: { type: Number, default: 0 }, // 平票怎么处理，0：平票就直接进入黑夜，不pk，1：平票 二者加赛一轮（这里逻辑就不好处理了） 2: 一直pk
+      winCondition: { type: Number, default: 0 }, // 胜利条件：1：屠边 2：全屠
+      flatTicket: { type: Number, default: 0 }, // 平票怎么处理，1：平票就直接进入黑夜，不pk，2：平票 二者加赛一轮（这里逻辑就不好处理了） 3: 一直pk
       p1: { type: Number, default: 30 }, // 预言家行动时间
       p2: { type: Number, default: 45 }, // 狼人行动时间
       p3: { type: Number, default: 30 }, // 女巫行动时间

@@ -498,7 +498,7 @@ module.exports = app => ({
   },
 
   /**
-   * 获取游戏是否结束
+   * 获取游戏是否结束 优先判断好人阵营死亡情况，在夜晚狼人先刀。
    * @returns {Promise<{result}>}
    */
   async settleGameOver (id) {
@@ -508,48 +508,17 @@ module.exports = app => ({
       return $helper.wrapResult(false, 'gameId为空！', -1)
     }
     let gameInstance = await $service.baseService.queryById(game, id)
+
+    let goodAlive = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, camp: 1, status: 1})
+    if(!goodAlive || goodAlive.length < 1){
+      // 好人全死
+      return await $service.gameService.setGameWin(id, 0)
+    }
+
     let villagerAlive = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, role: 'villager', status: 1})
-    if(!villagerAlive || villagerAlive.length < 1){
+    if((!villagerAlive || villagerAlive.length < 1) && gameInstance.winCondition === 1){
       // 屠边 - 村民 => 游戏结束，狼人胜利
-      await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: 0})
-      let recordObject = {
-        roomId: gameInstance.roomId,
-        gameId: gameInstance._id,
-        day: gameInstance.day,
-        stage: gameInstance.stage,
-        view: [],
-        isCommon: 1,
-        isTitle: 0,
-        content: {
-          type: 'rich-text',
-          content: [
-            {
-              text: '游戏结束！',
-              level: 1,
-            },
-            {
-              text: '狼人阵营',
-              level: 2,
-            },
-            {
-              text: '赢得',
-              level: 1,
-            },
-            {
-              text: '胜利！',
-              level: 3,
-            },
-          ]
-        }
-      }
-      await $service.baseService.save(record, recordObject)
-      $ws.connections.forEach(function (conn) {
-        let url = '/lrs/' + gameInstance.roomId
-        if(conn.path === url){
-          conn.sendText('gameOver')
-        }
-      })
-      return $helper.wrapResult(true , 'Y')
+      return await $service.gameService.setGameWin(id, 0)
     }
 
     let clericAlive = await $service.baseService.query(player,{
@@ -558,94 +527,76 @@ module.exports = app => ({
       role: { $in: ['predictor', 'witch', 'hunter']},
       status: 1
     })
-    if(!clericAlive || clericAlive.length < 1){
+
+    if((!clericAlive || clericAlive.length < 1) && gameInstance.winCondition === 1){
       // 屠边 - 屠神 => 游戏结束，狼人胜利
-      await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: 0})
-      let recordObject = {
-        roomId: gameInstance.roomId,
-        gameId: gameInstance._id,
-        day: gameInstance.day,
-        stage: gameInstance.stage,
-        view: [],
-        isCommon: 1,
-        isTitle: 0,
-        content: {
-          type: 'rich-text',
-          content: [
-            {
-              text: '游戏结束！',
-              level: 1,
-            },
-            {
-              text: '狼人阵营',
-              level: 2,
-            },
-            {
-              text: '赢得',
-              level: 1,
-            },
-            {
-              text: '胜利！',
-              level: 3,
-            },
-          ]
-        }
-      }
-      await $service.baseService.save(record, recordObject)
-      $ws.connections.forEach(function (conn) {
-        let url = '/lrs/' + gameInstance.roomId
-        if(conn.path === url){
-          conn.sendText('gameOver')
-        }
-      })
-      return $helper.wrapResult(true , 'Y')
+      return await $service.gameService.setGameWin(id, 0)
     }
 
     let wolfAlive = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, role: 'wolf', status: 1})
     if(!wolfAlive || wolfAlive.length < 1){
       // 狼人死完 => 游戏结束，好人胜利
-      await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: 1})
-      let recordObject = {
-        roomId: gameInstance.roomId,
-        gameId: gameInstance._id,
-        day: gameInstance.day,
-        stage: gameInstance.stage,
-        view: [],
-        isCommon: 1,
-        isTitle: 0,
-        content: {
-          type: 'rich-text',
-          content: [
-            {
-              text: '游戏结束！',
-              level: 1,
-            },
-            {
-              text: '好人阵营',
-              level: 3,
-            },
-            {
-              text: '赢得',
-              level: 1,
-            },
-            {
-              text: '胜利！',
-              level: 3,
-            },
-          ]
-        }
-      }
-      await $service.baseService.save(record, recordObject)
-      $ws.connections.forEach(function (conn) {
-        let url = '/lrs/' + gameInstance.roomId
-        if(conn.path === url){
-          conn.sendText('gameOver')
-        }
-      })
-      return $helper.wrapResult(true , 'Y')
+      return await $service.gameService.setGameWin(id, 1)
     }
     // 游戏未结束
     return $helper.wrapResult(true , 'N')
+  },
+
+  /**
+   * 游戏赢家
+   * @param id
+   * @param camp
+   * @returns {Promise<{result}>}
+   */
+  async setGameWin (id, camp) {
+    const { $service, $helper, $model, $ws } = app
+    const { game, record } = $model
+    if(!id){
+      return $helper.wrapResult(false, 'gameId为空！', -1)
+    }
+    if(camp === null || camp === undefined){
+      return $helper.wrapResult(false, '游戏赢家为空！', -1)
+    }
+    let gameInstance = await $service.baseService.queryById(game, id)
+    await $service.baseService.updateById(game, gameInstance._id,{status: 2, winner: camp})
+    let recordObject = {
+      roomId: gameInstance.roomId,
+      gameId: gameInstance._id,
+      day: gameInstance.day,
+      stage: gameInstance.stage,
+      view: [],
+      isCommon: 1,
+      isTitle: 0,
+      content: {
+        type: 'rich-text',
+        content: [
+          {
+            text: '游戏结束！',
+            level: 1,
+          },
+          {
+            text: camp === 0 ? '狼人阵营' : '好人阵营',
+            level: camp === 0 ? 2 : 3,
+          },
+          {
+            text: '赢得',
+            level: 1,
+          },
+          {
+            text: '胜利！',
+            level: 3,
+          },
+        ]
+      }
+    }
+    await $service.baseService.save(record, recordObject)
+    $ws.connections.forEach(function (conn) {
+      let url = '/lrs/' + gameInstance.roomId
+      if(conn.path === url){
+        conn.sendText('gameOver')
+      }
+    })
+    return $helper.wrapResult(true , 'Y')
   },
 
   /**
@@ -772,7 +723,6 @@ module.exports = app => ({
       // 投票 => 遗言 ,需要整理票型， 结算死亡玩家
       let voteActions = await $service.baseService.query(action, {roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage: 6, action: 'vote'})
       let alivePlayer = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1},{}, {sort: { position: 1 }})
-
       let voteResultMap = {}
       for(let i = 0; i < voteActions.length; i++){
         let item = voteActions[i]

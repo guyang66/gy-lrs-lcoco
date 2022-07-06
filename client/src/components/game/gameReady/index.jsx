@@ -24,6 +24,11 @@ const Ready = (props) => {
     { label: '不能自救', value: 3 },
   ];
 
+  const winConditionOptions = [
+    { label: '屠边', value: 1 },
+    { label: '屠城', value: 2 },
+  ];
+
   const [modifyModal, setModifyModal] = useState(false)
   const [newName, setNewName] = useState(null)
 
@@ -34,6 +39,7 @@ const Ready = (props) => {
     p2: 45,
     p3: 30,
     witchSaveSelf: 2,
+    winCondition: 1, // 屠边
   })
 
   const [kick, setKick] = useState(false)
@@ -287,6 +293,16 @@ const Ready = (props) => {
               options={witchSaveOptions}
               onChange={(e)=>{setGameSetting({...gameSetting, witchSaveSelf: e.target.value})}}
               value={gameSetting.witchSaveSelf}
+              optionType="button"
+              buttonStyle="solid"
+            />
+          </div>
+          <div className="setting-cell FBH FBAC mar-b10">
+            <div className="item-title">游戏胜利条件：</div>
+            <Radio.Group
+              options={winConditionOptions}
+              onChange={(e)=>{setGameSetting({...gameSetting, winCondition: e.target.value})}}
+              value={gameSetting.winCondition}
               optionType="button"
               buttonStyle="solid"
             />
