@@ -47,11 +47,15 @@ module.exports = app => ({
     }
     let currentUser = await $service.baseService.userInfo(ctx)
     let username = currentUser.username
+
+    let obResult = await $service.roomService.isOb(roomInstance._id, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
+
     let waitPlayer = roomInstance.wait
 
     // 判断当前用户是否已经入座
     let isSeat = await $service.roomService.findInSeatPlayer(id, username)
-    if(!isSeat.result){
+    if(!isOb && !isSeat.result){
       // 如果不在座位上，则查询是否在等待区
       let exist = waitPlayer.find(p=>{
         return p === username
@@ -372,4 +376,5 @@ module.exports = app => ({
     })
     ctx.body = $helper.Result.success('入座成功')
   },
+
 })

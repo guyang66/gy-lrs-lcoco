@@ -10,7 +10,9 @@ const Footer = (props) => {
 
   return (
     <div className="game-content-wrap">
-      <PlayerRoleView currentRole={currentRole} gameDetail={gameDetail} skillInfo={skillInfo} useSkill={useSkill} onOpen={()=>{openRoleCard()}} />
+      {
+        gameDetail.isOb ? null : <PlayerRoleView currentRole={currentRole} gameDetail={gameDetail} skillInfo={skillInfo} useSkill={useSkill} onOpen={()=>{openRoleCard()}} />
+      }
       <div className="desk-content mar-t10">
         <div className="title-text mar-t5 FBH FBAC FBJC">
           <div className="color-main">{'第' + gameDetail.day + '天'}</div>

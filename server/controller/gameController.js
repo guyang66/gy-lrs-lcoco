@@ -155,7 +155,7 @@ module.exports = app => ({
    */
   async getGameInfo (ctx) {
     const { $service, $helper, $model, $constants } = app
-    const { game, player} = $model
+    const { room, game, player} = $model
     const { playerRoleMap, stageMap } = $constants
     const { id } = ctx.query
     if(!id || id === ''){
@@ -168,9 +168,11 @@ module.exports = app => ({
       return
     }
     let currentUser = await $service.baseService.userInfo(ctx)
+    let obResult = await $service.roomService.isOb(gameInstance.roomId, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
     // 查询你在游戏中的状态
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
-    if(!currentPlayer){
+    if(!isOb && !currentPlayer){
       ctx.body = $helper.Result.fail(-1,'未查询到你在该游戏中')
       return
     }
@@ -218,7 +220,7 @@ module.exports = app => ({
       stage: gameInstance.stage,
       stageName: stageMap[gameInstance.stage] ? stageMap[gameInstance.stage].name : '未知',
       dayTag: gameInstance.stage < 4 ? '晚上' : '白天',
-      roleInfo: {
+      roleInfo: isOb ? {} : {
         role: currentPlayer.role,
         roleName: (playerRoleMap[currentPlayer.role] ? playerRoleMap[currentPlayer.role].name : ''),
         skill: currentPlayer.skill,
@@ -233,7 +235,8 @@ module.exports = app => ({
       broadcast: broadcastInfo.data,
       systemTip: systemTipsInfo.data,
       action: actionInfo.data,
-      winner: gameInstance.winner
+      winner: gameInstance.winner,
+      isOb: isOb
     }
     ctx.body = $helper.Result.success(gameInfo)
   },
@@ -255,13 +258,17 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'gameId不能为空！')
       return
     }
+    let gameInstance = await $service.baseService.queryById(game, gameId)
     let currentUser = await $service.baseService.userInfo(ctx)
+
+    let obResult = await $service.roomService.isOb(gameInstance.roomId, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
+
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameId, username: currentUser.username})
-    if(!currentPlayer){
+    if(!isOb && !currentPlayer){
       ctx.body = $helper.Result.fail(-1,'未查询到你在该游戏中！')
       return
     }
-    let gameInstance = await $service.baseService.queryById(game, gameId)
     if(role){
       /** 去掉玩家调用这个接口，采用倒计时，到点系统自动跳转到下一阶段 **/
       // role存在，说明是非host用户在调用接口，逻辑和host调用一样的，只不过多校验一下身份
@@ -361,8 +368,13 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏不存在！')
       return
     }
+
+    let currentUser = await $service.baseService.userInfo(ctx)
+    let obResult = await $service.roomService.isOb(gameInstance.roomId, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
+
     let query = {roomId: roomId, gameId: gameId}
-    if(gameInstance.status === 1){
+    if(gameInstance.status === 1 && !isOb){
       query.isCommon = 1
     }
 
@@ -372,6 +384,18 @@ module.exports = app => ({
     // 游戏中只给部分信息，不影响游戏继续下去，隐藏掉关键的视野和角色信息
     // 游戏结束，给出完整游戏流程信息（属于复盘）
     const filterRecord = (record) => {
+
+      const condition = (target, action) => {
+        if(isOb){
+          return false
+        }
+        if(action) {
+          return gameInstance.status === 1 && target.role !== 'out' && target.role !== 'exile' && action !== 'shoot'
+        } else {
+          return gameInstance.status === 1 && target.role !== 'out' && target.role !== 'exile'
+        }
+      }
+
       if(record.content.type === 'action'){
         return Object.assign({},record,{
           content: {
@@ -385,15 +409,15 @@ module.exports = app => ({
               name: record.content.from.name,
               position: record.content.from.position,
               status: record.content.from.status,
-              role: gameInstance.status === 1 && record.content.from.role !== 'out' && record.content.from.role !== 'exile' && record.content.action !== 'shoot' ? null : record.content.from.role,
-              camp: gameInstance.status === 1 && record.content.from.role !== 'out' && record.content.from.role !== 'exile' && record.content.action !== 'shoot' ? null : record.content.from.camp
+              role: condition(record.content.from, record.content.action) ? null : record.content.from.role,
+              camp: condition(record.content.from, record.content.action) ? null : record.content.from.camp
             },
             to: {
               username: record.content.to.username,
               name: record.content.to.name,
               position: record.content.to.position,
-              role: gameInstance.status === 1 && record.content.to.role !== 'out' && record.content.to.role !== 'exile' ? null : record.content.to.role,
-              camp: gameInstance.status === 1 && record.content.to.role !== 'out' && record.content.to.role !== 'exile' ? null : record.content.to.camp
+              role: condition(record.content.to) ? null : record.content.to.role,
+              camp: condition(record.content.to) ? null : record.content.to.camp
             }
           }
         })
@@ -1403,5 +1427,50 @@ module.exports = app => ({
       }
     })
     ctx.body = $helper.Result.success('ok')
+  },
+
+  /**
+   * 观战
+   * @returns {Promise<void>}
+   */
+  async obGame (ctx) {
+    const { $service, $helper, $model, $ws } = app
+    const { room, game, player } = $model
+    const { key } = ctx.query
+    if(!key || key === ''){
+      ctx.body = $helper.Result.fail(-1,'房间密码不能为空！')
+      return
+    }
+    let roomInstance = await $service.baseService.queryOne(room,{password: key}, {} ,{sort: { createTime: -1 }})
+    if(!roomInstance){
+      ctx.body = $helper.Result.fail(-1,'房间不存在或密码不对！')
+      return
+    }
+    if(!roomInstance.gameId){
+      ctx.body = $helper.Result.fail(-1,'游戏尚未开始！')
+      return
+    }
+    let gameInstance = await $service.baseService.queryById(game, roomInstance.gameId)
+    if(gameInstance.status !== 1){
+      ctx.body = $helper.Result.fail(-1,'游戏未开始或已结束，无法观战！')
+      return
+    }
+
+    let currentUser = await $service.baseService.userInfo(ctx)
+    let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomInstance._id, gameId: roomInstance.gameId, username: currentUser.username})
+    if(currentPlayer){
+      ctx.body = $helper.Result.fail(-1,'你正在该局游戏中，不能进入观战模式')
+      return
+    }
+
+    let obList = roomInstance.ob
+    if(obList.includes(currentUser.username)){
+      ctx.body = $helper.Result.success(roomInstance._id)
+      return
+    }
+    obList.push(currentUser.username)
+    await $service.baseService.updateById(room, roomInstance._id, {ob: obList})
+
+    ctx.body = $helper.Result.success(roomInstance._id)
   }
 })

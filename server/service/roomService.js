@@ -72,4 +72,21 @@ module.exports = app => ({
     return $helper.wrapResult(true, list)
   },
 
+  async isOb (roomId, username) {
+    const { $service, $helper, $model } = app
+    const { room} = $model
+    if(!roomId || !username){
+      return $helper.wrapResult(true, 'N')
+    }
+    let roomInstance = await $service.baseService.queryById(room, roomId)
+    if(!roomInstance){
+      return $helper.wrapResult(true, 'N')
+    }
+    let obList = roomInstance ? roomInstance.ob : []
+    if(obList.includes(username)){
+      return $helper.wrapResult(true, 'Y')
+    }
+    return $helper.wrapResult(true, 'N')
+  }
+
 })

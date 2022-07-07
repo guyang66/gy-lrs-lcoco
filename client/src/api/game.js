@@ -106,9 +106,17 @@ export default {
     })
   },
 
-  gameAgain  (params) {
+  gameAgain (params) {
     return fetch({
       url: urlPrefix + 'game/again/auth',
+      method: 'get',
+      params,
+    })
+  },
+
+  obGame (params) {
+    return fetch({
+      url: urlPrefix + 'game/ob/auth',
       method: 'get',
       params,
     })

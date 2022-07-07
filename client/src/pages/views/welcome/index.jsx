@@ -4,6 +4,7 @@ import {inject, observer} from "mobx-react";
 import {withRouter} from "react-router-dom";
 import apiUser from '@api/user'
 import apiRoom from '@api/room'
+import apiGame from '@api/game'
 
 import {Button, Modal, Input, Radio, message} from "antd";
 import helper from '@helper'
@@ -19,6 +20,7 @@ const Index = (props) => {
   const [newRoom, setNewRoom] = useState(null)
 
   const [joinRoomModal, setJoinRoomModal] = useState(false)
+  const [joinRoomMode, setJoinRoomMode] = useState('join')
   const [roomKey, setRoomKey] = useState(null)
 
   const playerType = [
@@ -74,10 +76,25 @@ const Index = (props) => {
       message.warning('房间密码不能为空！')
       return
     }
+    if(joinRoomMode === 'ob'){
+      obGame()
+      return
+    }
     apiRoom.joinRoom({key: roomKey}).then(data=>{
       message.success('加入房间成功！')
       setJoinRoomModal(false)
       setRoomKey(null)
+      setJoinRoomMode(null)
+      history.push({pathname: '/room', state: {id: data}})
+    })
+  }
+
+  const obGame = () => {
+    apiGame.obGame({key: roomKey}).then(data=>{
+      message.success('加入房间成功！')
+      setJoinRoomModal(false)
+      setRoomKey(null)
+      setJoinRoomMode(null)
       history.push({pathname: '/room', state: {id: data}})
     })
   }
@@ -132,6 +149,7 @@ const Index = (props) => {
             size="large"
             onClick={
               ()=>{
+                setJoinRoomMode('join')
                 setJoinRoomModal(true)
               }
             }
@@ -144,7 +162,8 @@ const Index = (props) => {
               size="large"
               onClick={
                 ()=>{
-                  createUser()
+                  setJoinRoomMode('ob')
+                  setJoinRoomModal(true)
                 }
               }
             >

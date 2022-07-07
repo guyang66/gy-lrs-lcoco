@@ -296,7 +296,7 @@ const Index = (props) => {
       src = roleCardMap[roleInfo.role]
     }
     const config = {
-      title: '您的身份是',
+      title: '您的身份是' + (gameDetail.isOb ? '观战者' : ''),
       icon: null,
       okText: '确认',
       content: (

@@ -13,6 +13,8 @@ module.exports = app => ({
     }
     let gameInstance = await $service.baseService.queryById(game, id)
     let currentUser = await $service.baseService.userInfo(ctx)
+    let obResult = await $service.roomService.isOb(gameInstance.roomId, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
     let playerCount = gameInstance.playerCount || 9
     let playerInfo = []
 
@@ -39,7 +41,7 @@ module.exports = app => ({
       let un = gameInstance['v' + (i + 1)]
       // 查询其他玩家信息
       let otherPlayer = await $service.baseService.queryOne(player, {username: un, gameId: id, roomId: gameInstance.roomId})
-      if(gameInstance.status === 2 || gameInstance.status === 3){
+      if(gameInstance.status === 2 || gameInstance.status === 3 || isOb){
         // 如果游戏已经结束，则获取完全视野（复盘）
         playerInfo.push({
           name: otherPlayer.name,
@@ -87,8 +89,12 @@ module.exports = app => ({
     }
     let gameInstance = await $service.baseService.queryById(game, id)
     let currentUser = await $service.baseService.userInfo(ctx)
+
+    let obResult = await $service.roomService.isOb(gameInstance.roomId, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
+
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
-    if(!currentPlayer.skill || currentPlayer.skill.length < 1){
+    if(isOb || !currentPlayer.skill || currentPlayer.skill.length < 1){
       return $helper.wrapResult(true, [])
     }
     let skill = currentPlayer.skill
@@ -355,6 +361,13 @@ module.exports = app => ({
     }
     let gameInstance = await $service.baseService.queryById(game, id)
     let currentUser = await $service.baseService.userInfo(ctx)
+
+    let obResult = await $service.roomService.isOb(gameInstance.roomId, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
+    if(isOb){
+      return $helper.wrapResult(true, [])
+    }
+
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
     if(gameInstance.status === 2){
       let info = []
@@ -539,6 +552,13 @@ module.exports = app => ({
     }
     let gameInstance = await $service.baseService.queryById(game, id)
     let currentUser = await $service.baseService.userInfo(ctx)
+
+    let obResult = await $service.roomService.isOb(gameInstance.roomId, currentUser.username)
+    let isOb = obResult.result && obResult.data === 'Y'
+    if(isOb){
+      return $helper.wrapResult(true, [])
+    }
+
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: currentUser.username})
 
     if(gameInstance.stage === 6) {
@@ -698,55 +718,27 @@ module.exports = app => ({
    * @returns {Promise<{result}>}
    */
   async moveToNextStage (gameId) {
-    const { $service, $helper, $model, $support, $ws, $nodeCache } = app
-    const { game, player, record, action, gameTag } = $model
+    const { $service, $helper, $model, $ws, $nodeCache } = app
+    const { game, record } = $model
 
     if(!gameId || gameId === ''){
       return $helper.wrapResult(false, 'gameId为空！', -1)
     }
 
     let gameInstance = await $service.baseService.queryById(game, gameId)
-
     let stage = gameInstance.stage
-    let nextStage = stage + 1
+
+    let nextStage = stage + 1 // 下一个要进入的阶段
     if(nextStage > 7) {
       // 进入第二天流程
       nextStage = 0
     }
+
     if( stage === 1){
-      let checkAction = await $service.baseService.queryOne(action,{gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: 1, action: 'check'})
-      if(!checkAction) {
-        // 空过
-        let predictorPlayer = await $service.baseService.queryOne(player,{roomId: gameInstance.roomId, gameId: gameInstance._id, role: 'predictor'})
-        let recordObject = {
-          roomId: gameInstance.roomId,
-          gameId: gameInstance._id,
-          day: gameInstance.day,
-          stage: gameInstance.stage,
-          view: [],
-          isCommon: 0,
-          isTitle: 0,
-          content: {
-            type: 'action',
-            key: 'jump',
-            text: $support.getPlayerFullName(predictorPlayer) + '，预言家空验',
-            actionName: '空验',
-            level: 6,
-            from: {
-              username: predictorPlayer.username,
-              name: predictorPlayer.name,
-              position: predictorPlayer.position,
-              role: predictorPlayer.role,
-              camp: predictorPlayer.camp,
-              status: predictorPlayer.status
-            },
-            to: {
-              username: null,
-              name: null,
-            }
-          }
-        }
-        await $service.baseService.save(record, recordObject)
+      // 结算预言家是否空过
+      let settleResult = await $service.stageService.predictorStage(gameInstance._id)
+      if(!settleResult.result){
+        return settleResult
       }
     } else if(stage === 2){
       // 结算狼人的实际击杀目标
@@ -762,655 +754,31 @@ module.exports = app => ({
       }
       await $service.gameService.settleGameOver(gameInstance._id)
     } else if (stage === 4) {
-      // 天亮 => 发言环节
-      let alivePlayer = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1})
-      let randomPosition = Math.floor(Math.random() * alivePlayer.length )
-      let randomOrder = Math.floor(Math.random() * 2 ) + 1 // 1到2的随机数
-      let targetPlayer = alivePlayer[randomPosition]
-      let tagObject = {
-        roomId: gameInstance.roomId,
-        gameId: gameInstance._id,
-        day: gameInstance.day,
-        stage: gameInstance.stage,
-        dayStatus: gameInstance.stage < 4 ? 1 : 2,
-        desc: 'speakOrder',
-        mode: 2,
-        value: randomOrder === 1 ? 'asc' : ' desc', // asc 上升（正序） ; desc 下降（逆序）
-        target: targetPlayer.username,
-        name: targetPlayer.name,
-        position: targetPlayer.position
+      // 天亮 => 发言环节 , 生成发言顺序等信息
+      let settleResult = await $service.stageService.preSpeakStage(gameInstance._id)
+      if(!settleResult.result){
+        return settleResult
       }
-      await $service.baseService.save(gameTag, tagObject)
-      let recordObject = {
-        roomId: gameInstance.roomId,
-        gameId: gameInstance._id,
-        day: gameInstance.day,
-        stage: gameInstance.stage,
-        view: [],
-        isCommon: 1,
-        isTitle: 0,
-        content: {
-          type: 'rich-text',
-          content: [
-            {
-              text: '进入投票环节，由',
-              level: 1,
-            },
-            {
-              text: $support.getPlayerFullName(targetPlayer),
-              level: 4,
-            },
-            {
-              text: '开始发言。顺序为：',
-              level: 1,
-            },
-            {
-              text: randomOrder === 1 ? '正向' : '逆向',
-              level: randomOrder === 1 ? 3 : 2,
-            }
-          ]
-        }
-      }
-      await $service.baseService.save(record, recordObject)
     } else if (stage === 6) {
-      // 投票 => 遗言 ,需要整理票型， 结算死亡玩家
-      let voteActions = await $service.baseService.query(action, {roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage: 6, action: 'vote'})
-      let alivePlayer = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1},{}, {sort: { position: 1 }})
-      let voteResultMap = {}
-      for(let i = 0; i < voteActions.length; i++){
-        let item = voteActions[i]
-        let from = item.from
-        let to = item.to
-        let fromPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: from})
-        if(voteResultMap[to]){
-          voteResultMap[to].push({username: from, position: fromPlayer.position})
-        } else {
-          voteResultMap[to] = [{username: from, position: fromPlayer.position}]
-        }
+      // 投票 => 遗言/pk加赛 ,需要整理票型， 结算死亡玩家
+      let settleResult = await $service.stageService.voteStage(gameInstance._id, 6)
+      if(!settleResult.result){
+        return settleResult
       }
-
-      // 找弃票玩家
-      let abstainedPlayer = [] // 弃票玩家
-      alivePlayer.forEach(item=>{
-        let exist = voteActions.find(function (vote) {
-          return vote.from === item.username
-        })
-        if(!exist){
-          abstainedPlayer.push(item)
-        }
-      })
-
-      for(let key in voteResultMap){
-        let content = voteResultMap[key]
-        // 排序
-        content = content.sort(function (a,b){
-          return a.position - b.position
-        })
-        let votePlayerString = ''
-        let toPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: key})
-        for(let i =0; i < content.length; i++){
-          let fromPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: content[i].username})
-          if(i !== 0){
-            votePlayerString = votePlayerString + '、'
-          }
-          votePlayerString = votePlayerString + fromPlayer.position + '号'
-        }
-        let voteResultString = votePlayerString + '投票给了' + toPlayer.position + '号玩家（' + toPlayer.name + ')'
-        let recordObject = {
-          roomId: gameInstance.roomId,
-          gameId: gameInstance._id,
-          day: gameInstance.day,
-          stage: gameInstance.stage,
-          view: [],
-          isCommon: 1,
-          isTitle: 0,
-          content: {
-            type: 'vote',
-            actionName: '投票',
-            text: voteResultString,
-            action: 'vote',
-            level: 4,
-            from: {
-              username: null,
-              name: votePlayerString,
-              position: null,
-              role: null,
-              camp: null
-            },
-            to: {
-              username: toPlayer.username,
-              name: toPlayer.position + '号（共' + content.length + '票）',
-              position: toPlayer.position,
-              role: null,
-              camp: null
-            }
-          }
-        }
-        await $service.baseService.save(record, recordObject)
+      if(settleResult.result && settleResult.data === 'Y'){
+        // 需要pk
+        nextStage = 6.5
       }
-
-      // 处理弃票record
-      if(abstainedPlayer && abstainedPlayer.length > 0){
-        let abstainedString = ''
-        for(let i =0; i < abstainedPlayer.length; i++){
-          if(i !== 0){
-            abstainedString = abstainedString + '、'
-          }
-          abstainedString = abstainedString + abstainedPlayer[i].position + '号'
-        }
-
-        let recordObject = {
-          roomId: gameInstance.roomId,
-          gameId: gameInstance._id,
-          day: gameInstance.day,
-          stage: gameInstance.stage,
-          view: [],
-          isCommon: 1,
-          isTitle: 0,
-          content: {
-            type: 'vote',
-            actionName: '弃票',
-            text: abstainedString + '弃票',
-            action: 'abstained',
-            level: 5,
-            from: {name: abstainedString},
-            to: {
-              name: '弃票',
-              username: null
-            }
-          }
-        }
-        await $service.baseService.save(record, recordObject)
-      }
-
-      if(!voteActions || voteActions.length < 1){
-        let recordObject = {
-          roomId: gameInstance.roomId,
-          gameId: gameInstance._id,
-          day: gameInstance.day,
-          stage: gameInstance.stage,
-          view: [],
-          isCommon: 1,
-          isTitle: 0,
-          content: {
-            text: '所有人弃票，没有玩家出局',
-            type: 'text',
-            level: 2,
-          }
-        }
-        await $service.baseService.save(record, recordObject)
-      } else {
-        let usernameList = []
-        voteActions.forEach(item=>{
-          usernameList.push(item.to)
-        })
-        let maxCount = $helper.findMaxValue(usernameList)
-        if(maxCount.length < 1){
-          let recordObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            view: [],
-            isCommon: 1,
-            isTitle: 0,
-            content: {
-              text: '所有人弃票，没有玩家出局',
-              type: 'text',
-              level: 2,
-            }
-          }
-          await $service.baseService.save(record, recordObject)
-        } else if(maxCount.length ===  1){
-          let max = maxCount[0]
-          let votePlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: max})
-          let recordObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            view: [],
-            isCommon: 1,
-            isTitle: 0,
-            content: {
-              type: 'action',
-              actionName: '放逐',
-              action: 'out',
-              text: $support.getPlayerFullName(votePlayer) + '获得最高票数，出局！',
-              level: 2,
-              from: {
-                name: votePlayer.name,
-                username: votePlayer.username,
-                position: votePlayer.position,
-                role: votePlayer.role,
-                camp: votePlayer.camp
-              },
-              to: {
-                role: 'exile',
-                name: '放逐出局'
-              }
-            }
-          }
-          await $service.baseService.save(record, recordObject)
-
-          // 注册死亡
-          let tagObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            dayStatus: gameInstance.stage < 4 ? 1 : 2,
-            desc: 'vote',
-            mode: 1,
-            target: votePlayer.username,
-            name: votePlayer.name,
-            position: votePlayer.position
-          }
-          await $service.baseService.save(gameTag, tagObject)
-          await $service.baseService.updateById(player, votePlayer._id,{status: 0, outReason: 'vote'})
-          if(votePlayer.role === 'hunter'){
-            // 修改猎人的技能状态
-            let skills = votePlayer.skill
-            let newSkillStatus = []
-            skills.forEach(item=>{
-              if(item.key === 'shoot'){
-                newSkillStatus.push({
-                  name: item.name,
-                  key: item.key,
-                  status: 1
-                })
-              } else {
-                newSkillStatus.push(item)
-              }
-            })
-            await $service.baseService.updateById(player, votePlayer._id, {
-              skill: newSkillStatus
-            })
-          }
-        } else {
-          let recordObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            view: [],
-            isCommon: 1,
-            isTitle: 0,
-            content: {
-              type: 'rich-text',
-              content: [
-                {
-                  text: '平票',
-                  level: 2,
-                },
-                {
-                  text: '，没有玩家出局',
-                  level: 1,
-                }
-              ]
-            }
-          }
-          await $service.baseService.save(record, recordObject)
-          if(gameInstance.flatTicket === 2){
-            // 平票加赛的处理
-            let num = Math.floor(Math.random() * maxCount.length)
-            let randomOrder = Math.floor(Math.random() * 2 ) + 1 // 1到2的随机数
-            let targetPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: maxCount[num]})
-            let tagObject = {
-              roomId: gameInstance.roomId,
-              gameId: gameInstance._id,
-              day: gameInstance.day,
-              stage: gameInstance.stage,
-              dayStatus: gameInstance.stage < 4 ? 1 : 2,
-              desc: 'pkOrder',
-              mode: 2,
-              value: randomOrder === 1 ? 'asc' : ' desc', // asc 上升（正序） ; desc 下降（逆序）
-              target: targetPlayer.username,
-              name: targetPlayer.name,
-              position: targetPlayer.position
-            }
-            await $service.baseService.save(gameTag, tagObject)
-
-            let pkPlayerString = ''
-            for(let i = 0; i < maxCount.length; i ++ ){
-              let pkPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: maxCount[i]})
-              pkPlayerString = pkPlayerString + $support.getPlayerFullName(pkPlayer)
-              if(i < maxCount.length - 1){
-                pkPlayerString = pkPlayerString + '、'
-              }
-            }
-            let recordObject = {
-              roomId: gameInstance.roomId,
-              gameId: gameInstance._id,
-              day: gameInstance.day,
-              stage: gameInstance.stage,
-              view: [],
-              isCommon: 1,
-              isTitle: 0,
-              content: {
-                type: 'rich-text',
-                content: [
-                  {
-                    text: '进入',
-                    level: 1,
-                  },
-                  {
-                    text: '加赛pk',
-                    level: 2,
-                  },
-                  {
-                    text: '环节，',
-                    level: 1,
-                  },
-                  {
-                    text: pkPlayerString,
-                    level: 3,
-                  },
-                  {
-                    text: '进行pk',
-                    level: 2,
-                  },
-                  {
-                    text: '，由',
-                    level: 1,
-                  },
-                  {
-                    text: $support.getPlayerFullName(targetPlayer),
-                    level: 4,
-                  },
-                  {
-                    text: '先开始发言。顺序为：',
-                    level: 1,
-                  },
-                  {
-                    text: randomOrder === 1 ? '正向' : '逆向',
-                    level: randomOrder === 1 ? 3 : 2,
-                  }
-                ]
-              }
-            }
-            await $service.baseService.save(record, recordObject)
-
-            let pkTagObject = {
-              roomId: gameInstance.roomId,
-              gameId: gameInstance._id,
-              day: gameInstance.day,
-              stage: gameInstance.stage,
-              dayStatus: gameInstance.stage < 4 ? 1 : 2,
-              desc: 'pkPlayer',
-              mode: 3,
-              value2: maxCount,
-              target: 'pkPlayer',
-            }
-            await $service.baseService.save(gameTag, pkTagObject)
-            // 进入到6.5阶段（pk阶段）
-            nextStage = nextStage - 0.5
-          }
-        }
-      }
-
-      await $service.gameService.settleGameOver(gameInstance._id)
     } else if (stage === 6.5){
-      // 投票 => 遗言 ,需要整理票型， 结算死亡玩家
-      let voteActions = await $service.baseService.query(action, {roomId: gameInstance.roomId, gameId: gameInstance._id, day: gameInstance.day, stage: 6.5, action: 'vote'})
-      let alivePlayers = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1},{}, {sort: { position: 1 }})
-      // 剔除掉pk中的玩家
-      let pkTag = await $service.baseService.queryOne(gameTag, {
-        roomId: gameInstance.roomId,
-        gameId: gameInstance._id,
-        day: gameInstance.day,
-        mode: 3,
-        desc: 'pkPlayer'
-      })
-      let pkPlayers = pkTag ? pkTag.value2 : []
-      let alivePlayer = []
-      alivePlayers.forEach(item=>{
-        if(!pkPlayers.includes(item.username)){
-          alivePlayer.push(item)
-        }
-      })
-
-      let voteResultMap = {}
-      for(let i = 0; i < voteActions.length; i++){
-        let item = voteActions[i]
-        let from = item.from
-        let to = item.to
-        let fromPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: from})
-        if(voteResultMap[to]){
-          voteResultMap[to].push({username: from, position: fromPlayer.position})
-        } else {
-          voteResultMap[to] = [{username: from, position: fromPlayer.position}]
-        }
+      // 投票pk加赛 => 遗言 ,需要整理票型， 结算死亡玩家
+      let settleResult = await $service.stageService.voteStage(gameInstance._id, 6.5)
+      if(!settleResult.result){
+        return settleResult
       }
-
-      // 找弃票玩家
-      let abstainedPlayer = [] // 弃票玩家
-      alivePlayer.forEach(item=>{
-        let exist = voteActions.find(function (vote) {
-          return vote.from === item.username
-        })
-        if(!exist){
-          abstainedPlayer.push(item)
-        }
-      })
-
-      for(let key in voteResultMap){
-        let content = voteResultMap[key]
-        // 排序
-        content = content.sort(function (a,b){
-          return a.position - b.position
-        })
-        let votePlayerString = ''
-        let toPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: key})
-        for(let i =0; i < content.length; i++){
-          let fromPlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: content[i].username})
-          if(i !== 0){
-            votePlayerString = votePlayerString + '、'
-          }
-          votePlayerString = votePlayerString + fromPlayer.position + '号'
-        }
-        let voteResultString = votePlayerString + '投票给了' + toPlayer.position + '号玩家（' + toPlayer.name + ')'
-        let recordObject = {
-          roomId: gameInstance.roomId,
-          gameId: gameInstance._id,
-          day: gameInstance.day,
-          stage: gameInstance.stage,
-          view: [],
-          isCommon: 1,
-          isTitle: 0,
-          content: {
-            type: 'vote',
-            actionName: '投票',
-            text: voteResultString,
-            action: 'vote',
-            level: 4,
-            from: {
-              username: null,
-              name: votePlayerString,
-              position: null,
-              role: null,
-              camp: null
-            },
-            to: {
-              username: toPlayer.username,
-              name: toPlayer.position + '号（共' + content.length + '票）',
-              position: toPlayer.position,
-              role: null,
-              camp: null
-            }
-          }
-        }
-        await $service.baseService.save(record, recordObject)
-      }
-
-      // 处理弃票record
-      if(abstainedPlayer && abstainedPlayer.length > 0){
-        let abstainedString = ''
-        for(let i = 0; i < abstainedPlayer.length; i++){
-          if(i !== 0){
-            abstainedString = abstainedString + '、'
-          }
-          abstainedString = abstainedString + abstainedPlayer[i].position + '号'
-        }
-
-        let recordObject = {
-          roomId: gameInstance.roomId,
-          gameId: gameInstance._id,
-          day: gameInstance.day,
-          stage: gameInstance.stage,
-          view: [],
-          isCommon: 1,
-          isTitle: 0,
-          content: {
-            type: 'vote',
-            actionName: '弃票',
-            text: abstainedString + '弃票',
-            action: 'abstained',
-            level: 5,
-            from: {name: abstainedString},
-            to: {
-              name: '弃票',
-              username: null
-            }
-          }
-        }
-        await $service.baseService.save(record, recordObject)
-      }
-
-      if(!voteActions || voteActions.length < 1){
-        let recordObject = {
-          roomId: gameInstance.roomId,
-          gameId: gameInstance._id,
-          day: gameInstance.day,
-          stage: gameInstance.stage,
-          view: [],
-          isCommon: 1,
-          isTitle: 0,
-          content: {
-            text: '所有人弃票，没有玩家出局',
-            type: 'text',
-            level: 2,
-          }
-        }
-        await $service.baseService.save(record, recordObject)
-      } else {
-        let usernameList = []
-        voteActions.forEach(item=>{
-          usernameList.push(item.to)
-        })
-        let maxCount = $helper.findMaxValue(usernameList)
-        if(maxCount.length < 1){
-          let recordObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            view: [],
-            isCommon: 1,
-            isTitle: 0,
-            content: {
-              text: '所有人弃票，没有玩家出局',
-              type: 'text',
-              level: 2,
-            }
-          }
-          await $service.baseService.save(record, recordObject)
-        } else if(maxCount.length ===  1){
-          let max = maxCount[0]
-          let votePlayer = await $service.baseService.queryOne(player, {roomId: gameInstance.roomId, gameId: gameInstance._id, username: max})
-          let recordObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            view: [],
-            isCommon: 1,
-            isTitle: 0,
-            content: {
-              type: 'action',
-              actionName: '放逐',
-              action: 'out',
-              text: $support.getPlayerFullName(votePlayer) + '获得最高票数，出局！',
-              level: 2,
-              from: {
-                name: votePlayer.name,
-                username: votePlayer.username,
-                position: votePlayer.position,
-                role: votePlayer.role,
-                camp: votePlayer.camp
-              },
-              to: {
-                role: 'exile',
-                name: '放逐出局'
-              }
-            }
-          }
-          await $service.baseService.save(record, recordObject)
-
-          // 注册死亡
-          let tagObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            dayStatus: gameInstance.stage < 4 ? 1 : 2,
-            desc: 'vote',
-            mode: 1,
-            target: votePlayer.username,
-            name: votePlayer.name,
-            position: votePlayer.position
-          }
-          await $service.baseService.save(gameTag, tagObject)
-          await $service.baseService.updateById(player, votePlayer._id,{status: 0, outReason: 'vote'})
-          if(votePlayer.role === 'hunter'){
-            // 修改猎人的技能状态
-            let skills = votePlayer.skill
-            let newSkillStatus = []
-            skills.forEach(item=>{
-              if(item.key === 'shoot'){
-                newSkillStatus.push({
-                  name: item.name,
-                  key: item.key,
-                  status: 1
-                })
-              } else {
-                newSkillStatus.push(item)
-              }
-            })
-            await $service.baseService.updateById(player, votePlayer._id, {
-              skill: newSkillStatus
-            })
-          }
-        } else {
-          let recordObject = {
-            roomId: gameInstance.roomId,
-            gameId: gameInstance._id,
-            day: gameInstance.day,
-            stage: gameInstance.stage,
-            view: [],
-            isCommon: 1,
-            isTitle: 0,
-            content: {
-              type: 'rich-text',
-              content: [
-                {
-                  text: '平票',
-                  level: 2,
-                },
-                {
-                  text: '，没有玩家出局',
-                  level: 1,
-                }
-              ]
-            }
-          }
-          await $service.baseService.save(record, recordObject)
-        }
-      }
-      await $service.gameService.settleGameOver(gameInstance._id)
       nextStage = 7
     }
 
+    // 修改游戏状态
     let update = {stage: nextStage}
     if(nextStage === 0){
       update.day = gameInstance.day + 1
