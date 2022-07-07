@@ -65,6 +65,7 @@ module.exports = app => ({
       p3: setting.p3 || 30,
       witchSaveSelf: setting.witchSaveSelf || 2,
       winCondition: setting.winCondition || 1,
+      flatTicket: setting.flatTicket || 1,
       mode: 'standard_9' // 标准9人局
     }
 
@@ -244,7 +245,7 @@ module.exports = app => ({
    */
   async nextStage (ctx) {
     const { $service, $helper, $model, $support, $ws, $nodeCache } = app
-    const { game, player } = $model
+    const { game, player,action } = $model
     const { roomId, gameId, role } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -315,6 +316,26 @@ module.exports = app => ({
     if(!r.result){
       ctx.body = $helper.Result.fail(r.errorCode, r.errorMessage)
       return
+    }
+    if(r.data !== 'Y' && r.data.length > 1){
+      console.log(r.data)
+      // 给非pk玩家新的一次投票机会
+      let pkPlayers = r.data
+      let voteAction = await $service.baseService.query(action, {gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: gameInstance.stage, action: 'vote'})
+      console.log(voteAction)
+      for(let i = 0; i< voteAction.length; i++){
+        let username = voteAction[i].from
+        let has = pkPlayers.includes(username)
+        if(!has){
+          await $service.baseService.deleteById(action, voteAction[i]._id)
+        }
+      }
+      $ws.connections.forEach(function (conn) {
+        let url = '/lrs/' + gameInstance.roomId
+        if(conn.path === url){
+          conn.sendText('refreshGame')
+        }
+      })
     }
     ctx.body = $helper.Result.success('操作成功！')
   },
@@ -789,7 +810,8 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'游戏已经结束！' + winnerString)
       return
     }
-    if(gameInstance.stage !== 6) {
+
+    if(gameInstance.stage !== 6 && gameInstance.stage !== 6.5) {
       ctx.body = $helper.Result.fail(-1,'该阶段不能进行投票操作')
       return
     }
@@ -806,9 +828,17 @@ module.exports = app => ({
     }
 
     let exist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: 6, action: 'vote'})
-    if(exist){
+    if(exist && gameInstance.stage === 6){
       ctx.body = $helper.Result.fail(-1,'今天你已使用过投票功能！')
       return
+    }
+    if(gameInstance.flatTicket === 2){
+      // 平票pk多出来的阶段
+      let pkExist = await $service.baseService.queryOne(action, {roomId: roomId, gameId: gameInstance._id, from: currentUser.username, day: gameInstance.day, stage: 6.5, action: 'vote'})
+      if(pkExist && gameInstance.stage === 6.5){
+        ctx.body = $helper.Result.fail(-1,'今天你已使用过投票功能！')
+        return
+      }
     }
 
     let targetPlayer = await $service.baseService.queryOne(player, {roomId: roomId, gameId: gameInstance._id, username: username})

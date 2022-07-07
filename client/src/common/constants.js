@@ -68,8 +68,27 @@ const roleMap = {
   'villager': '村民'
 }
 
+const witchSaveOptions = [
+  { label: '均能自救', value: 1 },
+  { label: '首页自救', value: 2 },
+  { label: '不能自救', value: 3 },
+];
+
+const winConditionOptions = [
+  { label: '屠边', value: 1 },
+  { label: '屠城', value: 2 },
+];
+
+const flatTicketOptions = [
+  { label: '直接进入夜晚', value: 1 },
+  { label: '加赛pk一轮', value: 2 },
+]
+
 export default {
   roleMap,
   roleCardMap,
-  modalDescMap
+  modalDescMap,
+  witchSaveOptions,
+  winConditionOptions,
+  flatTicketOptions
 }

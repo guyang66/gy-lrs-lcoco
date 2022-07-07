@@ -82,6 +82,7 @@ const Index = (props) => {
     apiGame.getGameInfo({id: gameId, roomId: roomId}).then(data=>{
       setGameDetail(data)
       setCurrentRole(data.roleInfo || {})
+      console.log(data.playerInfo)
       setPlayerInfo(data.playerInfo || [])
       setSkillInfo(data.skill || [])
       setActionInfo(data.action || [])
@@ -188,6 +189,9 @@ const Index = (props) => {
         let canCheck = true
         if(item.status === 0){
           // 不能对死人发动技能
+          canCheck = false
+        }
+        if(!item.isTarget){
           canCheck = false
         }
         tmp.push({...item, check: canCheck, isTarget: false})
@@ -353,10 +357,10 @@ const Index = (props) => {
     } else if (msg === 'refreshGame') {
       initGame(gameDetail._id, roomDetail._id)
     } else if (msg === 'stageChange') {
-      setActionModal(false)
       setActionPlayer([])
       setCurrentAction('')
       setActionResult(null)
+      closeAllModel()
       initGame(gameDetail._id, roomDetail._id)
     } else if (msg === 'gameStart'){
       getRoomDetail(true)

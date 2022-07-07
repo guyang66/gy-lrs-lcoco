@@ -95,6 +95,10 @@ module.exports = {
       name: '投票环节',
       key: 'vote'
     },
+    6.5: {
+      name: '加赛pk环节',
+      key: 'vote-pk'
+    },
     7: {
       name: '遗言环节',
       key: 'lastWord'
@@ -150,6 +154,28 @@ module.exports = {
       },
       {
         text: '投票',
+        level: 2, // 黑色字体
+      },
+      {
+        text: '，请使用投票技能进行投票，如果要',
+        level: 1, // 黑色字体
+      },
+      {
+        text: '弃票',
+        level: 2, // 黑色字体
+      },
+      {
+        text: '，则不进行任何操作，等待主持人进入下一阶段',
+        level: 1, // 黑色字体
+      },
+    ],
+    '*-6.5': [
+      {
+        text: '开始',
+        level: 1, // 红色字体
+      },
+      {
+        text: '加赛投票',
         level: 4, // 黑色字体
       },
       {

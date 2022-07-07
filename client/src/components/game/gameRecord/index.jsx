@@ -69,7 +69,7 @@ const Record = (props) => {
                         }
                         {
                           record.content.type === 'rich-text' ? (
-                            <div className="FBH FBAC">
+                            <div className="FBH FBAC" style={{flexWrap: 'wrap'}}>
                               {
                                 (record.content.content || []).map((itm, index)=>{
                                   return (

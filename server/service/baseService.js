@@ -189,7 +189,7 @@ module.exports = app => ({
    * @param model
    * @returns {Promise<boolean>}
    */
-  async delete (model, id) {
+  async deleteById (model, id) {
     const { $log4 } = app
     const { errorLogger } = $log4
     if(!model){

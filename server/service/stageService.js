@@ -324,44 +324,6 @@ module.exports = app => ({
       }
     }
     return $helper.wrapResult(true, '')
-  },
-
-
-  async beforeSpeak (id) {
-    const { $service, $helper, $model, $support } = app
-    const { game, player, record, gameTag } = $model
-    if(!id){
-      return $helper.wrapResult(false, 'gameId为空！', -1)
-    }
-    let gameInstance = await $service.baseService.queryById(game, id)
-    let alivePlayer = await $service.baseService.query(player,{gameId: gameInstance._id, roomId: gameInstance.roomId, status: 1})
-    let randomPosition = Math.floor(Math.random() * alivePlayer.length ) + 1
-    let randomOrder = Math.floor(Math.random() * 2 ) + 1 // 1到2的随机数
-    let targetPlayer = alivePlayer[randomPosition]
-    let tagObject = {
-      roomId: gameInstance.roomId,
-      gameId: gameInstance._id,
-      day: gameInstance.day,
-      stage: gameInstance.stage,
-      dayStatus: gameInstance.stage < 4 ? 1 : 2,
-      desc: 'speakOrder',
-      mode: 2,
-      value: randomOrder === 1 ? 'asc' : ' desc', // asc 上升（正序） ; desc 下降（逆序）
-      target: targetPlayer.username,
-      name: targetPlayer.name,
-      position: targetPlayer.position
-    }
-    await $service.baseService.save(gameTag, tagObject)
-    let recordObject = {
-      roomId: gameInstance.roomId,
-      gameId: gameInstance._id,
-      day: gameInstance.day,
-      stage: gameInstance.stage,
-      view: [],
-      isCommon: 1,
-      isTitle: 0,
-      content: '进入投票环节，由' + $support.getPlayerFullName(targetPlayer) + '开始发言。顺序为：' + (randomOrder === 1 ? '正向' : '逆向')
-    }
-    await $service.baseService.save(record, recordObject)
   }
+
 })

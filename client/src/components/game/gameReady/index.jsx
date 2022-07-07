@@ -9,25 +9,16 @@ import apiGame from '@api/game'
 
 import cls from "classnames";
 import helper from '@helper'
+import constants from "@common/constants";
 
 import {Button, Input, message, Modal, Radio} from "antd";
 import {PlusCircleOutlined, MinusCircleOutlined} from '@ant-design/icons';
 
+const { witchSaveOptions, winConditionOptions, flatTicketOptions } = constants
+
 const Ready = (props) => {
   const { appStore, seat, roomDetail } = props
   const { user } = appStore
-
-
-  const witchSaveOptions = [
-    { label: '均能自救', value: 1 },
-    { label: '首页自救', value: 2 },
-    { label: '不能自救', value: 3 },
-  ];
-
-  const winConditionOptions = [
-    { label: '屠边', value: 1 },
-    { label: '屠城', value: 2 },
-  ];
 
   const [modifyModal, setModifyModal] = useState(false)
   const [newName, setNewName] = useState(null)
@@ -40,6 +31,7 @@ const Ready = (props) => {
     p3: 30,
     witchSaveSelf: 2,
     winCondition: 1, // 屠边
+    flatTicket: 1,
   })
 
   const [kick, setKick] = useState(false)
@@ -82,6 +74,14 @@ const Ready = (props) => {
   const startGame = () => {
     apiGame.startGame({id: roomDetail._id, setting: gameSetting}).then(data=>{
       message.success('新游戏开始！')
+      setGameSetting({
+        p1: 30,
+        p2: 45,
+        p3: 30,
+        witchSaveSelf: 2,
+        winCondition: 1,
+        flatTicket: 1,
+      })
     })
   }
 
@@ -307,9 +307,18 @@ const Ready = (props) => {
               buttonStyle="solid"
             />
           </div>
+          <div className="setting-cell FBH FBAC mar-b10">
+            <div className="item-title">平票：</div>
+            <Radio.Group
+              options={flatTicketOptions}
+              onChange={(e)=>{setGameSetting({...gameSetting, flatTicket: e.target.value})}}
+              value={gameSetting.flatTicket}
+              optionType="button"
+              buttonStyle="solid"
+            />
+          </div>
         </div>
       </Modal>
-
     </div>
   )
 }
