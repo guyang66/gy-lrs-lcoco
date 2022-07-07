@@ -5,7 +5,7 @@ module.exports = app => ({
    * @returns {Promise<void>}
    */
   async createUser(ctx) {
-    //todo: url权限要跟上
+    //todo: url权限要跟上,
     const {  $service, $helper, $model } = app
     const { user } = $model
     const { username, name, password, role } = ctx.request.body

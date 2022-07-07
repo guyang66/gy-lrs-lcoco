@@ -375,6 +375,8 @@ const Index = (props) => {
       setActionPlayer([])
       setCurrentAction('')
       setActionResult(null)
+      setPlayerInfo([])
+      setCurrentRole({})
       if(socketOn){
         getRoomDetail()
       }

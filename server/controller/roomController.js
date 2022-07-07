@@ -118,7 +118,6 @@ module.exports = app => ({
       ctx.body = $helper.Result.fail(-1,'房间密码不能为空！')
       return
     }
-    // todo:缺少观战加入房间的逻辑
     let roomInstance = await $service.baseService.queryOne(room,{password: key}, {} ,{sort: { createTime: -1 }})
     if(!roomInstance){
       ctx.body = $helper.Result.fail(-1,'房间不存在或密码不对！')

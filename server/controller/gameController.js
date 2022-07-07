@@ -155,7 +155,7 @@ module.exports = app => ({
    */
   async getGameInfo (ctx) {
     const { $service, $helper, $model, $constants } = app
-    const { room, game, player} = $model
+    const { game, player } = $model
     const { playerRoleMap, stageMap } = $constants
     const { id } = ctx.query
     if(!id || id === ''){
@@ -247,8 +247,8 @@ module.exports = app => ({
    * @returns {Promise<void>}
    */
   async nextStage (ctx) {
-    const { $service, $helper, $model, $support, $ws, $nodeCache } = app
-    const { game, player,action } = $model
+    const { $service, $helper, $model, $support, $nodeCache } = app
+    const { game, player } = $model
     const { roomId, gameId, role } = ctx.query
     if(!roomId || roomId === ''){
       ctx.body = $helper.Result.fail(-1,'roomId不能为空！')
@@ -323,26 +323,6 @@ module.exports = app => ({
     if(!r.result){
       ctx.body = $helper.Result.fail(r.errorCode, r.errorMessage)
       return
-    }
-    if(r.data !== 'Y' && r.data.length > 1){
-      console.log(r.data)
-      // 给非pk玩家新的一次投票机会
-      let pkPlayers = r.data
-      let voteAction = await $service.baseService.query(action, {gameId: gameInstance._id, roomId: gameInstance.roomId, day: gameInstance.day, stage: gameInstance.stage, action: 'vote'})
-      console.log(voteAction)
-      for(let i = 0; i< voteAction.length; i++){
-        let username = voteAction[i].from
-        let has = pkPlayers.includes(username)
-        if(!has){
-          await $service.baseService.deleteById(action, voteAction[i]._id)
-        }
-      }
-      $ws.connections.forEach(function (conn) {
-        let url = '/lrs/' + gameInstance.roomId
-        if(conn.path === url){
-          conn.sendText('refreshGame')
-        }
-      })
     }
     ctx.body = $helper.Result.success('操作成功！')
   },

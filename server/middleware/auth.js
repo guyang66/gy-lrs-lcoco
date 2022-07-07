@@ -17,8 +17,6 @@ module.exports = app => {
 
     let isLogin
 
-
-    // console.log(ctx.header.authorization)
     try {
       isLogin = !!await $helper.checkToken(accessToken)
     } catch (e) {
