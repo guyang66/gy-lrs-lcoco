@@ -21,7 +21,7 @@
       "pass": ""
     },
     "prd": {
-      "servername": "localhost",
+      "servername": "120.48.51.123",
       "database": "lrs",
       "port": 27017,
       "user": "lrs_admin",

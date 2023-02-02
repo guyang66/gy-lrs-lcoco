@@ -8,10 +8,10 @@
   "scripts": {
     "kill": "kill `lsof -t -i:6001`",
     "clear": "rimraf ./logs/*",
-    "start": "cross-env NODE_ENV=development node app.js",
+    "server": "cross-env NODE_ENV=development node app.js",
     "prd": "cross-env NODE_ENV=production pm2 start app.js -n lrs",
     "front": "react-app-rewired start",
-    "dev": "npm run start & npm run front",
+    "dev": "npm run server & npm run front",
     "build": "rimraf ./dist & react-app-rewired build"
   },
   "dependencies": {

@@ -288,7 +288,7 @@ module.exports = app => ({
           from: {
             username: witchPlayer.username,
             name: witchPlayer.name,
-            status: killAction.to === witchPlayer.username ? 1 : witchPlayer.status,
+            status: (killAction && killAction.to === witchPlayer.username) ? 1 : witchPlayer.status,
             position: witchPlayer.position,
             role: witchPlayer.role,
             camp: witchPlayer.camp
