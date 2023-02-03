@@ -1436,6 +1436,7 @@ module.exports = app => ({
       return
     }
 
+    // todo: 架构问题，导致上下文只能通过函数传值，非常不友好，可以参考eggjs架构，用class以及懒加载实现动态获取上下文。
     let currentUser = await $service.baseService.userInfo(ctx)
     let currentPlayer = await $service.baseService.queryOne(player, {roomId: roomInstance._id, gameId: roomInstance.gameId, username: currentUser.username})
     if(currentPlayer){
